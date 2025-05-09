@@ -44,14 +44,14 @@ This project is 100% free and open-source software.
    pip3 install -r requirements.txt  # Linux/Mac
    ```
    
-4. **Start backend server**:
+4. **Start the application**:
    ```
    python run_app.py  # Windows
    # OR
    python3 run_app.py  # Linux/Mac
    ```
 
-## Launching After Installation
+## Launching After first time Setup
 
 Once you have completed the initial setup, you don't need to repeat all steps when launching the application in the future:
 
