@@ -39,31 +39,8 @@ This project is 100% free and open-source software.
    ```
    pip install -r requirements.txt
    ```
-4. **Install frontend dependencies**:
-   ```
-   cd fe
-   npm install
-   ```
-5. **Build frontend and copy to backend**:
-   ```
-   npm run build
-   cd ..
-   ```
    
-   Then copy the built files to the backend (platform-specific):
-   
-   **Windows**:
-   ```
-   xcopy /E /I /Y fe\dist backend\react
-   ```
-   
-   **Mac/Linux**:
-   ```
-   mkdir -p backend/react
-   cp -R fe/dist/* backend/react/
-   ```
-   
-6. **Start backend server**:
+4. **Start backend server**:
    ```
    python run_app.py
    ```
@@ -77,6 +54,7 @@ After modifying frontend code, rebuild and copy to the backend directory:
 **Windows**:
 ```
 cd fe
+npm install
 npm run build
 cd ..
 xcopy /E /I /Y fe\dist backend\react
@@ -85,6 +63,7 @@ xcopy /E /I /Y fe\dist backend\react
 **Mac/Linux**:
 ```
 cd fe
+npm install
 npm run build
 cd ..
 mkdir -p backend/react
