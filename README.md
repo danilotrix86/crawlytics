@@ -26,7 +26,7 @@ This project is 100% free and open-source software.
 1. **Clone repository**:
    ```
    git clone https://github.com/danilotrix86/crawlytics.git
-   cd crawlitycs
+   cd .\crawlytics\backend\
    ```
 
 2. **Configure Python environment**:
