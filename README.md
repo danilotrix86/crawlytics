@@ -26,23 +26,52 @@ This project is 100% free and open-source software.
 1. **Clone repository**:
    ```
    git clone https://github.com/danilotrix86/crawlytics.git
-   cd .\crawlytics\backend\
+   cd crawlytics\backend
    ```
 
 2. **Configure Python environment**:
    ```
-   python -m venv venv
+   python -m venv venv  # Windows
+   # OR
+   python3 -m venv venv  # Linux/Mac
    .\venv\Scripts\activate  # Windows
    source venv/bin/activate  # Linux/Mac
    ```
 3. **Install backend dependencies**:
    ```
-   pip install -r requirements.txt
+   pip install -r requirements.txt  # Windows
+   # OR
+   pip3 install -r requirements.txt  # Linux/Mac
    ```
    
 4. **Start backend server**:
    ```
-   python run_app.py
+   python run_app.py  # Windows
+   # OR
+   python3 run_app.py  # Linux/Mac
+   ```
+
+## Launching After Installation
+
+Once you have completed the initial setup, you don't need to repeat all steps when launching the application in the future:
+
+1. **Navigate to the backend directory**:
+   ```
+   cd crawlytics\backend
+   ```
+
+2. **Activate the virtual environment**:
+   ```
+   .\venv\Scripts\activate  # Windows
+   # OR
+   source venv/bin/activate  # Linux/Mac
+   ```
+
+3. **Start the server**:
+   ```
+   python run_app.py  # Windows
+   # OR
+   python3 run_app.py  # Linux/Mac
    ```
 
 ## Frontend Development
