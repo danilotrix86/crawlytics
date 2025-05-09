@@ -25,7 +25,7 @@ This project is 100% free and open-source software.
 
 1. **Clone repository**:
    ```
-   git clone https://github.com/danilotrix86/crawlitycs.git
+   git clone https://github.com/danilotrix86/crawlytics.git
    cd crawlitycs
    ```
 
