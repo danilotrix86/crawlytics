@@ -1,0 +1,142 @@
+/* Override styles for confirmation modals in both light and dark modes */
+
+/* Light mode styles */
+[role="dialog"] {
+  background-color: white !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 8px !important;
+}
+
+/* Light mode overlay */
+.modal-overlay {
+  background-color: rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Light mode content area */
+.text-center.p-6 {
+  background-color: white !important;
+  border-radius: 8px !important;
+}
+
+/* Super aggressive styling for the failure button in BOTH modes */
+button[color="failure"],
+html body button[color="failure"],
+div button[color="failure"],
+div[role="dialog"] button[color="failure"],
+div[aria-modal="true"] button[color="failure"],
+button.border-red-600[color="failure"],
+.text-center.p-6 button[color="failure"],
+button[color="failure"]:not([disabled]) {
+  background-color: #ef4444 !important; /* red-500 */
+  background: #ef4444 !important; /* red-500 */
+  border: 1px solid #dc2626 !important; /* red-600 */
+  color: white !important;
+}
+
+/* Force it for both hover and non-hover states */
+html body button[color="failure"]:hover:not(:disabled),
+div[role="dialog"] button[color="failure"]:hover:not(:disabled),
+div button[color="failure"]:hover:not(:disabled),
+button[color="failure"]:hover:not(:disabled) {
+  background-color: #dc2626 !important; /* red-600 */
+  background: #dc2626 !important; /* red-600 */
+}
+
+/* Override any Flowbite classes that might be applying background color */
+button[color="failure"] * {
+  background-color: transparent !important;
+}
+
+/* Gray button styling */
+button[color="gray"] {
+  background-color: #f3f4f6 !important; /* gray-100 */
+  color: #1f2937 !important; /* gray-800 */
+  border: 1px solid #d1d5db !important; /* gray-300 */
+}
+
+button[color="gray"]:hover:not(:disabled) {
+  background-color: #e5e7eb !important; /* gray-200 */
+}
+
+/* Dark mode styles */
+.dark [role="dialog"] {
+  background-color: #1f2937 !important; /* gray-800 */
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid #374151 !important; /* gray-700 */
+  border-radius: 8px !important;
+}
+
+.dark .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+.dark .modal-content,
+.dark div[role="dialog"] > div {
+  background-color: #1f2937 !important; /* gray-800 */
+  border-radius: 8px !important;
+}
+
+/* Target the specific panel with p-6 padding */
+.dark .text-center.p-6 {
+  background-color: #1f2937 !important; /* gray-800 */
+  border-radius: 8px !important;
+}
+
+.dark .text-center.p-6 h3 {
+  color: #e5e7eb !important; /* gray-200 */
+}
+
+.dark .text-center.p-6 p {
+  color: #d1d5db !important; /* gray-300 */
+}
+
+/* Style the buttons in dark mode - using the same style as light mode for consistency */
+.dark button[color="failure"] {
+  background-color: #ef4444 !important; /* red-500 */
+  background: #ef4444 !important; /* red-500 */
+  border: 1px solid #dc2626 !important; /* red-600 */
+  color: white !important;
+}
+
+.dark button[color="failure"]:hover:not(:disabled) {
+  background-color: #dc2626 !important; /* red-600 */
+  background: #dc2626 !important; /* red-600 */
+}
+
+.dark button[color="gray"] {
+  background-color: #374151 !important; /* gray-700 */
+  color: #f3f4f6 !important; /* gray-100 */
+  border: 1px solid #4b5563 !important; /* gray-600 */
+}
+
+.dark button[color="gray"]:hover:not(:disabled) {
+  background-color: #4b5563 !important; /* gray-600 */
+}
+
+/* Style the modal wrapper and all its nested elements */
+.dark div[aria-modal="true"],
+.dark div[aria-modal="true"] > div {
+  background-color: #1f2937 !important; /* gray-800 */
+}
+
+/* Apply to all modal dialogs */
+div[role="dialog"] {
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+/* Make modals stand out from the page background */
+div[aria-modal="true"] {
+  filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* Target the specific confirmation dialog from the screenshot */
+.dark div:has(> h3:contains("Are you sure you want to delete the log file")) {
+  background-color: #1f2937 !important; /* gray-800 */
+}
+
+/* Force the style with !important and higher specificity */
+.dark html body div[role="dialog"] > div {
+  background-color: #1f2937 !important; /* gray-800 */
+} 

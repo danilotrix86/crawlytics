@@ -1,0 +1,211 @@
+@import "tailwindcss";
+@plugin "flowbite-react/plugin/tailwindcss";
+@source "../.flowbite-react/class-list.json";
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+	--transition-duration-standard: 100ms;
+}
+
+/* Custom utility classes */
+@utility transition-standard {
+  transition: all var(--transition-duration-standard) ease-in-out;
+}
+  
+@utility transition-colors-standard {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: ease-in-out;
+  transition-duration: var(--transition-duration-standard);
+}
+
+@layer utilities {
+  /* Pagination controls for dark mode */
+  .dark .pagination-page-indicator {
+    @apply bg-gray-700 text-gray-300 border-gray-600;
+  }
+
+  .dark .pagination-button-active {
+    @apply text-gray-300 bg-gray-700 hover:bg-gray-600 focus:ring-gray-500;
+  }
+
+  .dark .pagination-button-disabled {
+    @apply text-gray-500 bg-gray-800 cursor-not-allowed;
+  }
+
+  /* Grouped styles for ApexCharts text elements and Flowbite spinner in dark mode */
+  .dark .apexcharts-title-text,
+  .dark .apexcharts-xaxis-title-text,
+  .dark .apexcharts-xaxis-label,
+  .dark .apexcharts-yaxis-title-text,
+  .dark .apexcharts-yaxis-label,
+  .dark .apexcharts-legend-text,
+  .dark .apexcharts-legend-text *,
+  .dark .apexcharts-datalabel,
+  .dark .apexcharts-datalabel *,
+  .dark .apexcharts-pie-label,
+  .dark .apexcharts-donut-label,
+  .dark .apexcharts-donut-value,
+  .dark .apexcharts-pie-value,
+  .dark .apexcharts-data-labels,
+  .dark .apexcharts-data-labels * {
+    color: theme('colors.gray.100') !important;
+    fill: theme('colors.gray.100') !important; /* Apply both color and fill */
+  }
+
+  /* Specific styles for donut chart center labels */
+  .dark .apexcharts-chart-text text,
+  .dark .apexcharts-datalabel-label,
+  .dark .apexcharts-datalabel-value,
+  .dark .apexcharts-total-text,
+  .dark .apexcharts-total-value {
+    fill: theme('colors.gray.100') !important;
+    color: theme('colors.gray.100') !important;
+  }
+
+  /* Make Flowbite spinner brighter in dark mode */
+  .dark [role="status"] {
+    color: theme('colors.gray.100') !important;
+  }
+
+  /* Style ApexCharts Tooltip for Dark Mode */
+  .dark .apexcharts-tooltip.apexcharts-theme-light {
+    background: theme('colors.gray.700') !important;
+    border-color: theme('colors.gray.600') !important;
+  }
+
+  .dark .apexcharts-tooltip-title {
+    background: theme('colors.gray.600') !important;
+    border-color: theme('colors.gray.500') !important;
+    color: theme('colors.gray.100') !important;
+  }
+
+  /* Grouped styles for ApexCharts tooltip text elements */
+  .dark .apexcharts-tooltip-text-value,
+  .dark .apexcharts-tooltip-text-label,
+  .dark .apexcharts-tooltip-marker {
+    color: theme('colors.gray.100') !important;
+  }
+
+  .dark .apexcharts-tooltip-series-group {
+    border-color: theme('colors.gray.600') !important;
+  }
+
+  .status-success {
+    @apply text-green-500 font-semibold transition-colors-standard;
+  }
+  .dark .status-success {
+    @apply text-green-400;
+  }
+  .status-redirect {
+    @apply text-yellow-500 font-semibold transition-colors-standard;
+  }
+  .dark .status-redirect {
+    @apply text-yellow-300;
+  }
+  .status-error {
+    @apply text-red-600 font-semibold transition-colors-standard;
+  }
+  .dark .status-error {
+    @apply text-red-400;
+  }
+}
+
+/* Directly target the Flowbite Modal in dark mode with higher specificity */
+.dark div[data-testid="modal"] {
+  background-color: theme('colors.gray.800') !important;
+  color: theme('colors.gray.200') !important;
+}
+
+.dark div[data-testid="modal"] div[data-testid="modal-body"] {
+  background-color: theme('colors.gray.800') !important;
+}
+
+.dark div[data-testid="modal"] div {
+  background-color: theme('colors.gray.800') !important;
+}
+
+.dark div[role="dialog"] {
+  background-color: theme('colors.gray.800') !important;
+  color: theme('colors.gray.200') !important;
+}
+
+/* Target the modal backdrop specifically */
+.dark div[data-testid="modal-backdrop"],
+.dark div[data-modal-backdrop] {
+  background-color: rgba(0, 0, 0, 0.7) !important;
+}
+
+/* High specificity on the buttons */
+.dark button[color="gray"] {
+  background-color: theme('colors.gray.700') !important;
+  color: theme('colors.gray.100') !important;
+  border-color: theme('colors.gray.600') !important;
+}
+
+.dark button[color="gray"]:hover:not(:disabled) {
+  background-color: theme('colors.gray.600') !important;
+}
+
+/* Target each specific part of the DeleteConfirmationModal */
+.dark div[aria-modal="true"] {
+  background-color: theme('colors.gray.800') !important;
+}
+
+.dark div[aria-modal="true"] h3 {
+  color: theme('colors.gray.200') !important;
+}
+
+.dark div[aria-modal="true"] p {
+  color: theme('colors.gray.300') !important;
+}
+
+/* Target the specific confirmation dialog seen in the image */
+.dark .bg-white {
+  background-color: theme('colors.gray.800') !important;
+}
+
+.dark div:has(> h3:contains("Are you sure you want to delete the log file")) {
+  background-color: theme('colors.gray.800') !important;
+}
+
+/* Extra specific selectors targeting the exact dialog shown */
+.dark div:has(> p:contains("All associated data will be permanently removed")) {
+  background-color: theme('colors.gray.800') !important;
+  color: theme('colors.gray.300') !important;
+}
+
+/* Target all elements inside a modal */
+.dark [role="dialog"] * {
+  background-color: theme('colors.gray.800') !important;
+}
+
+/* Even higher specificity for buttons */
+.dark [role="dialog"] button {
+  background-color: theme('colors.gray.700') !important;
+}
+
+.dark [role="dialog"] button:first-of-type {
+  background-color: theme('colors.red.700') !important;
+}
+
+/* Direct inline style override for the modal */
+html.dark body [role="dialog"]:not([hidden]) {
+  background-color: theme('colors.gray.800') !important;
+}
+
+/* Override panel colors in Flowbite modals directly */
+.dark div.p-6:has(svg) {
+  background-color: theme('colors.gray.800') !important;
+}
+
+/* Capture exactly the panel shown in the screenshot */
+.dark div.text-center.p-6 {
+  background-color: theme('colors.gray.800') !important;
+}
+
+.dark div.text-center.p-6 h3 {
+  color: theme('colors.gray.300') !important;
+  background-color: theme('colors.gray.800') !important;
+}
+

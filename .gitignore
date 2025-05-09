@@ -1,0 +1,41 @@
+backend/venv/
+backend/.env
+
+.cursors/*
+
+*.log
+
+*.db
+backend/data/logs.db
+/backend/data
+ 
+*.pyc
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Rust log_ingester build artifacts
+backend/log_ingester/target/
+backend/log_ingester/*.rs.bk
+
+# Cargo package manager
+backend/log_ingester/Cargo.lock
+
+# IDE/editor files
+backend/log_ingester/*.swp
+backend/log_ingester/*.swo
+backend/log_ingester/*.tmp
+backend/log_ingester/*.bak
+backend/log_ingester/*.backup
+backend/log_ingester/.idea/
+backend/log_ingester/.vscode/
+backend/log_ingester/*.DS_Store
+backend/build/
+backend/dist/
+# Coverage and test output
+backend/log_ingester/coverage/
+backend/log_ingester/*.profraw
+
+backend/crawlytics.db-shm
+backend/crawlytics.db-wal
+
