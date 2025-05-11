@@ -31,9 +31,14 @@ export function useLogFileDeletion({ selectedLogId, selectLogFile }: UseLogFileD
                         // Select the next available file
                         selectLogFile(remainingFiles[0].log_file_id);
                     } else {
-                        // No files left, navigate to upload
+                        // No files left, navigate to upload if not on settings page
                         selectLogFile(null);
-                        navigate('/upload');
+                        
+                        // For hash-based routing, check the hash portion of the URL
+                        const currentHash = window.location.hash.replace('#', '');
+                        if (currentHash !== '/settings') {
+                            navigate('/upload');
+                        }
                     }
                 }
                 // Invalidate the queries *after* potential state updates within the transition

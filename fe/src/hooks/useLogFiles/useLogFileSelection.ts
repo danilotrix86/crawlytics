@@ -98,11 +98,15 @@ export function useLogFileSelection() {
         selectLogFile
     });
 
-    // Redirect to upload page if no log files are available
+    // Redirect to upload page if no log files are available (except for Settings page)
     useEffect(() => {
         // Ensure deletion isn't pending when checking length
         if (logFiles && logFiles.length === 0 && !deletingLogId) {
-            if (window.location.pathname !== '/upload') {
+            // For hash-based routing, check the hash portion of the URL
+            const currentHash = window.location.hash.replace('#', '');
+            
+            // Only redirect if not already on upload page and not on settings page
+            if (currentHash !== '/upload' && currentHash !== '/settings') {
                 console.log("No log files found, redirecting to upload.");
                 navigate('/upload');
             }

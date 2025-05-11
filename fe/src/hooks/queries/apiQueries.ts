@@ -156,4 +156,86 @@ export function useTaskStatusQuery<TData = TaskStatusResponse>(
 		...defaultQueryOptions,
 		...options
 	});
+}
+
+/**
+ * Hook for getting crawler patterns
+ */
+export function useCrawlerPatternsQuery(
+	options?: Omit<UseQueryOptions<{patterns: string[]}, Error>, 'queryKey' | 'queryFn'>
+) {
+	return useQuery<{patterns: string[]}, Error>({
+		queryKey: ['crawlerPatterns'],
+		queryFn: async () => {
+			try {
+				return await pythonApiFetch<{patterns: string[]}>('/crawler-patterns');
+			} catch (error) {
+				console.error('Error fetching crawler patterns:', error);
+				throw error;
+			}
+		},
+		...defaultQueryOptions,
+		...options
+	});
+}
+
+/**
+ * Hook for updating crawler patterns
+ */
+export function useUpdateCrawlerPatternsMutation(
+	options?: Omit<UseMutationOptions<unknown, Error, string[]>, 'mutationFn'>
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation<unknown, Error, string[]>({
+		mutationFn: async (patterns: string[]) => {
+			try {
+				return await pythonApiFetch<unknown>('/crawler-patterns', {
+					method: 'POST',
+					body: JSON.stringify(patterns)
+				});
+			} catch (error) {
+				console.error('Error updating crawler patterns:', error);
+				throw error;
+			}
+		},
+		onSuccess: (data, variables, context) => {
+			// Invalidate the crawler patterns query to refresh the data
+			queryClient.invalidateQueries({ queryKey: ['crawlerPatterns'] });
+			
+			// Call the original onSuccess if provided
+			options?.onSuccess?.(data, variables, context);
+		},
+		...options
+	});
+}
+
+/**
+ * Hook for resetting crawler patterns to default values
+ */
+export function useResetCrawlerPatternsMutation(
+	options?: Omit<UseMutationOptions<unknown, Error, void>, 'mutationFn'>
+) {
+	const queryClient = useQueryClient();
+
+	return useMutation<unknown, Error, void>({
+		mutationFn: async () => {
+			try {
+				return await pythonApiFetch<unknown>('/crawler-patterns/reset', {
+					method: 'POST'
+				});
+			} catch (error) {
+				console.error('Error resetting crawler patterns:', error);
+				throw error;
+			}
+		},
+		onSuccess: (data, variables, context) => {
+			// Invalidate the crawler patterns query to refresh the data
+			queryClient.invalidateQueries({ queryKey: ['crawlerPatterns'] });
+			
+			// Call the original onSuccess if provided
+			options?.onSuccess?.(data, variables, context);
+		},
+		...options
+	});
 } 

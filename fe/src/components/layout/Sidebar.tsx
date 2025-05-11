@@ -7,7 +7,7 @@
 import React, { Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sidebar, SidebarItem as FlowbiteSidebarItem, SidebarItemGroup, SidebarItems } from "flowbite-react";
-import { ChartMixed, MapPin, Grid, FolderOpen, CloudArrowUp, Users, TableRow, QuestionCircle } from 'flowbite-react-icons/outline';
+import { ChartMixed, MapPin, Grid, FolderOpen, CloudArrowUp, Users, TableRow, QuestionCircle, Cog } from 'flowbite-react-icons/outline';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useQueryErrorResetBoundary } from '@tanstack/react-query';
 import { LogFilesErrorFallback } from './Sidebar/LogFilesErrorFallback';
@@ -77,6 +77,9 @@ export const AppSidebar: React.FC<SidebarProps> = ({ className }) => {
                         </SidebarItem>
                         <SidebarItem to="/upload" icon={CloudArrowUp}>
                             Upload Log
+                        </SidebarItem>
+                        <SidebarItem to="/settings" icon={Cog}>
+                            Settings
                         </SidebarItem>
                     </SidebarItemGroup>
                     <SidebarItemGroup>

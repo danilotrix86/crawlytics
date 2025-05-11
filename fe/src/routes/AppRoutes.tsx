@@ -6,6 +6,7 @@ import UploadPage from '../pages/UploadPage';
 import TrafficInsight from '../pages/TrafficInsight';
 import LogsTable from '../pages/LogsTable';
 import GeographicInsight from '../pages/GeographicInsight';
+import Settings from '../pages/Settings';
 
 // Using React 19 function declaration style without unnecessary props
 const AppRoutes = () => (
@@ -17,6 +18,7 @@ const AppRoutes = () => (
 			<Route path="/traffic-insight" element={<TrafficInsight />} />
 			<Route path="/geographic-insight" element={<GeographicInsight />} />
 			<Route path="/logs" element={<LogsTable />} />
+			<Route path="/settings" element={<Settings />} />
 			<Route path="/" element={<Navigate to="/dashboard" replace />} />
 		</Route>
 	</Routes>

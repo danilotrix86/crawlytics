@@ -9,6 +9,7 @@ import uvicorn
 
 # Import routes
 from routes.logs import router as logs_router
+from routes.crawler_config import router as crawler_config_router
 
 # Fix for running as packaged application where stdout might be None
 # This prevents the "NoneType has no attribute isatty" error
@@ -59,6 +60,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(logs_router, prefix="/api")
+app.include_router(crawler_config_router, prefix="/api")
 
 # Define the path to the static files (React build)
 static_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "react")
