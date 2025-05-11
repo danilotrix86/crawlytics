@@ -46,22 +46,33 @@ export const LogFileItem: React.FC<LogFileItemProps> = ({
     };
     
     return (
-        <div className={`relative group rounded-lg overflow-hidden ${isSelected ? 'ring-2 ring-blue-500' : ''}`}>
+        <div className={`relative group rounded-lg overflow-hidden ${isSelected ? 'ring-2 ring-blue-500 dark:ring-blue-400' : ''}`}>
             <Link 
                 to="#"
-                className="block transition-standard rounded-lg hover:translate-x-1 overflow-hidden w-full cursor-default"
+                className={`block transition-standard rounded-lg hover:translate-x-1 overflow-hidden w-full cursor-default ${
+                    isSelected ? 'transform-gpu translate-x-0.5' : ''
+                }`}
                 onClick={handleLogFileClick}
                 aria-current={isSelected ? 'page' : undefined}
             >
-                <div className={`flex items-center gap-2 p-2 rounded-lg ${isSelected 
-                    ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800' 
-                    : 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-700'} 
-                    hover:bg-blue-50 dark:hover:bg-blue-900/20 border transition-colors-standard`}>
-                    <div className="flex-shrink-0 w-9 h-9 flex items-center justify-center bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700 rounded-md text-white shadow-sm">
+                <div className={`flex items-center gap-2 p-2 rounded-lg ${
+                    isSelected 
+                    ? 'bg-blue-100 dark:bg-blue-900/40 border-blue-200 dark:border-blue-800 shadow-sm' 
+                    : 'bg-gray-50 dark:bg-gray-700/30 border-gray-100 dark:border-gray-700'
+                } hover:bg-blue-50 dark:hover:bg-blue-900/20 border transition-colors-standard`}>
+                    <div className={`flex-shrink-0 w-9 h-9 flex items-center justify-center ${
+                        isSelected 
+                        ? 'bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-800' 
+                        : 'bg-gradient-to-br from-blue-400 to-blue-600 dark:from-blue-500 dark:to-blue-700'
+                    } rounded-md text-white shadow-sm`}>
                         <FileChartBar className="w-4 h-4" />
                     </div>
                     <div className="flex-grow min-w-0">
-                        <div className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate" title={file.file_name}>
+                        <div className={`text-sm font-medium ${
+                            isSelected 
+                            ? 'text-blue-700 dark:text-blue-300' 
+                            : 'text-gray-800 dark:text-gray-100'
+                        } truncate`} title={file.file_name}>
                             {file.file_name}
                         </div>
                         {file.upload_timestamp && (

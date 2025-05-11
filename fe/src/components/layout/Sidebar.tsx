@@ -5,7 +5,7 @@
 "use client";
 
 import React, { Suspense } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Sidebar, SidebarItem as FlowbiteSidebarItem, SidebarItemGroup, SidebarItems } from "flowbite-react";
 import { ChartMixed, MapPin, Grid, FolderOpen, CloudArrowUp, Users, TableRow, QuestionCircle } from 'flowbite-react-icons/outline';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -20,6 +20,9 @@ interface SidebarProps {
 
 // Custom SidebarItem that uses React Router Link
 const SidebarItem = ({ to, icon, children, ...rest }: any) => {
+    const location = useLocation();
+    const isActive = location.pathname === to || (to !== '/' && location.pathname.startsWith(to));
+    
     const handleClick = (e: React.MouseEvent) => {
         // Set cookie for navigation history or user preferences
         document.cookie = `lastVisited=${to}; path=/; max-age=86400`;
@@ -32,6 +35,7 @@ const SidebarItem = ({ to, icon, children, ...rest }: any) => {
             to={to}
             icon={icon}
             onClick={handleClick}
+            className={isActive ? 'sidebar-item-active' : 'transition-colors-standard'}
             {...rest}
         >
             {children}

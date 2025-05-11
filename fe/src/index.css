@@ -20,6 +20,15 @@
 }
 
 @layer utilities {
+  /* Sidebar active state styling */
+  .sidebar-item-active {
+    @apply bg-blue-50 text-blue-600 font-medium border-l-4 border-blue-500 transition-colors-standard;
+  }
+
+  .dark .sidebar-item-active {
+    @apply bg-gray-700 text-blue-300 border-l-4 border-blue-400;
+  }
+
   /* Pagination controls for dark mode */
   .dark .pagination-page-indicator {
     @apply bg-gray-700 text-gray-300 border-gray-600;
