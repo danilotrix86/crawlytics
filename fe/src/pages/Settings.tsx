@@ -136,6 +136,7 @@ const Settings: React.FC<SettingsProps> = memo(({ className = '' }) => {
                     <strong className="block mt-2">Important:</strong> These patterns should be updated before uploading 
                     new log files, as the upload process uses this list to identify and extract crawlers 
                     from your logs and save them in the database.
+                    <small className="block mt-2 text-gray-500">Note: Enter only the crawler name (e.g., "GPTBot"), not the provider information.</small>
                 </p>
                 
                 <div className="mb-4">

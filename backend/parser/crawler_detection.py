@@ -3,9 +3,12 @@ Crawler detection module for identifying LLM and AI web crawlers.
 Provides utility functions and pattern matching for crawler identification.
 """
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Pattern
+from typing import Dict, List, Optional, Pattern, Set
 import re
+import logging
 
+# Configure logging
+logger = logging.getLogger("crawler_detection")
 
 @dataclass
 class CrawlerDatabase:
@@ -16,15 +19,20 @@ class CrawlerDatabase:
         "openai": [
             "ChatGPT-User",
             "OpenAI-GPT",
-            "GPTBot"
+            "GPTBot",
+            "OAI-SearchBot"
         ],
         "google": [
             "Google-Extended",
             "Googlebot",
-            "Google-Extended/2.0"
+            "GoogleOther",
+            "Google-CloudVertexBot"
         ],
         "anthropic": [
             "Claude-Web",
+            "ClaudeBot",
+            "Claude-User",
+            "Claude-SearchBot",
             "Anthropic-AI",
             "Claude/",
             "Anthropic-AI-Crawler"
@@ -32,12 +40,17 @@ class CrawlerDatabase:
         "meta": [
             "MetaGPT",
             "LLaMA-Bot",
-            "Meta AI"
+            "Meta AI",
+            "Meta-ExternalAgent",
+            "Meta-ExternalFetcher",
+            "FacebookBot",
+            "Facebookbot"
         ],
         "cohere": [
             "Cohere-AI",
             "CohereBot",
-            "cohere-ai"
+            "cohere-ai",
+            "cohere-training-data-crawler"
         ],
         "microsoft": [
             "BingBot",
@@ -48,23 +61,53 @@ class CrawlerDatabase:
         ],
         "perplexity": [
             "Perplexity",
-            "PerplexityBot"
+            "PerplexityBot",
+            "Perplexity-User"
         ],
-        "research": [
-            "AI-Research-Bot",
-            "ML-Crawler"
+        "amazon": [
+            "Amazonbot"
         ],
-        "generic": [
-            "AI-Assistant",
-            "LLM-Crawler",
-            "AIReader",
-            "SentientAI",
-            "AI-Web-Assistant"
+        "apple": [
+            "Applebot",
+            "Applebot-Extended"
+        ],
+        "mistral": [
+            "MistralAI-User"
+        ],
+        "common_crawl": [
+            "CCBot"
+        ],
+        "ai2": [
+            "AI2Bot",
+            "AI2Bot-Dolma"
+        ],
+        "other": [
+            "DuckDuckBot",
+            "DuckAssistBot",
+            "Diffbot",
+            "Bytespider",
+            "Omgili",
+            "Omgilibot",
+            "webzio-extended",
+            "Youbot",
+            "SemrushBot-OCOB",
+            "Petalbot",
+            "PanguBot",
+            "Kangaroo Bot",
+            "Sentibot",
+            "img2dataset",
+            "Meltwater",
+            "Seekr",
+            "peer39_crawler",
+            "Scrapy"
         ]
     })
     
     # Flat list of all patterns for quick lookups
     _all_patterns: List[str] = field(init=False)
+    
+    # Set of lowercase patterns for faster lookups
+    _lowercase_patterns: Set[str] = field(init=False)
     
     # Domain to crawler name mapping
     domain_mappings: Dict[str, str] = field(default_factory=lambda: {
@@ -75,7 +118,11 @@ class CrawlerDatabase:
         "claude.ai": "Claude-Web",
         "cohere.com": "cohere-ai",
         "google.com": "Googlebot",
-        "meta.com": "MetaGPT"
+        "meta.com": "MetaGPT",
+        "facebook.com": "Facebookbot",
+        "amazon.com": "Amazonbot",
+        "apple.com": "Applebot",
+        "mistral.ai": "MistralAI-User"
     })
     
     # Common web browsers to exclude from crawler detection
@@ -100,6 +147,9 @@ class CrawlerDatabase:
             pattern for patterns in self.patterns_by_provider.values() 
             for pattern in patterns
         ]
+        
+        # Create set of lowercase patterns for faster lookups
+        self._lowercase_patterns = {pattern.lower() for pattern in self._all_patterns}
     
     def is_crawler(self, user_agent: str) -> bool:
         """
@@ -117,8 +167,14 @@ class CrawlerDatabase:
         # Convert to lowercase for case-insensitive matching
         user_agent_lower = user_agent.lower()
         
+        # First, check for exact matches (most efficient)
+        if any(pattern == user_agent_lower for pattern in self._lowercase_patterns):
+            return True
+            
+        # Then check for substring matches
         for pattern in self._all_patterns:
-            if pattern.lower() in user_agent_lower:
+            pattern_lower = pattern.lower()
+            if pattern_lower in user_agent_lower:
                 return True
                 
         # Check for generic bot/crawler terms if not found in specific patterns
@@ -145,7 +201,12 @@ class CrawlerDatabase:
         user_agent_lower = user_agent.lower()
         
         # Direct pattern matches for specific LLM/AI crawlers
-        # Check all patterns in our database
+        # First, try exact matches
+        for pattern in self._all_patterns:
+            if pattern.lower() == user_agent_lower:
+                return pattern
+        
+        # Then check for substring matches
         for pattern in self._all_patterns:
             if pattern.lower() in user_agent_lower:
                 return pattern
@@ -201,10 +262,22 @@ def is_llm_crawler(user_agent: str) -> bool:
         
     user_agent_lower = user_agent.lower()
     
-    # Only match against the specific patterns in LLM_CRAWLER_PATTERNS
-    for pattern in LLM_CRAWLER_PATTERNS:
-        if pattern.lower() in user_agent_lower:
+    try:
+        # Check for exact matches first (most efficient)
+        lowercase_patterns = [pattern.lower() for pattern in LLM_CRAWLER_PATTERNS]
+        if user_agent_lower in lowercase_patterns:
             return True
+        
+        # Then check for substring matches
+        for pattern in LLM_CRAWLER_PATTERNS:
+            if pattern.lower() in user_agent_lower:
+                return True
+    except Exception as e:
+        logger.error(f"Error in is_llm_crawler: {str(e)}")
+        # Fall back to basic string matching if there's an error
+        for pattern in LLM_CRAWLER_PATTERNS:
+            if pattern.lower() in user_agent_lower:
+                return True
             
     return False
 
@@ -218,9 +291,21 @@ def extract_crawler_name(user_agent: str) -> Optional[str]:
         
     user_agent_lower = user_agent.lower()
     
-    # Only match against the specific patterns in LLM_CRAWLER_PATTERNS
-    for pattern in LLM_CRAWLER_PATTERNS:
-        if pattern.lower() in user_agent_lower:
-            return pattern
+    try:
+        # Check for exact matches first
+        for pattern in LLM_CRAWLER_PATTERNS:
+            if pattern.lower() == user_agent_lower:
+                return pattern
+        
+        # Then check for substring matches
+        for pattern in LLM_CRAWLER_PATTERNS:
+            if pattern.lower() in user_agent_lower:
+                return pattern
+    except Exception as e:
+        logger.error(f"Error in extract_crawler_name: {str(e)}")
+        # Fall back to basic string matching if there's an error
+        for pattern in LLM_CRAWLER_PATTERNS:
+            if pattern.lower() in user_agent_lower:
+                return pattern
             
     return None 

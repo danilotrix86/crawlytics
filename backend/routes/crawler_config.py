@@ -22,54 +22,63 @@ DEFAULT_CRAWLER_PATTERNS = [
     "GPTBot",
     "ChatGPT-User",
     "OAI-SearchBot",
-
+    
     # Anthropic
     "ClaudeBot",
+    "Claude-User",
+    "Claude-SearchBot",
     "Claude-Web",
     "Anthropic-AI",
     "Anthropic-AI-Crawler",
-
+    
     # Google
     "googlebot",
+    "Googlebot",
     "Google-Extended",
+    "GoogleOther",
     "Google-CloudVertexBot",
-
+    
     # Meta
+    "FacebookBot",
+    "Facebookbot",
+    "Meta-ExternalAgent",
     "MetaGPT",
     "LLaMA-Bot",
     "Meta AI",
-    "Meta-ExternalAgent",
     "Meta-ExternalFetcher",
-    "Facebookbot",
-
-    # Cohere
-    "Cohere-AI",
-    "CohereBot",
-    "cohere-ai",
-    "cohere-training-data-crawler",
-
-    # Perplexity
-    "PerplexityBot",
-
-    # Apple
-    "Applebot-Extended",
-
-    # Amazon
-    "Amazonbot",
-
-    # ByteDance
-    "Bytespider",
-
+    
+    # Mistral
+    "MistralAI-User",
+    
     # Common Crawl
     "CCBot",
-
-    # Allen Institute for AI
+    
+    # Perplexity
+    "PerplexityBot",
+    "Perplexity-User",
+    
+    # Amazon
+    "Amazonbot",
+    
+    # Apple
+    "Applebot",
+    "Applebot-Extended",
+    
+    # Cohere
+    "cohere-ai",
+    "Cohere-AI",
+    "CohereBot",
+    "cohere-training-data-crawler",
+    
+    # AI2
     "AI2Bot",
     "AI2Bot-Dolma",
-
+    
     # Others
-    "DuckAssistBot",
     "Diffbot",
+    "Bytespider",
+    "DuckDuckBot",
+    "DuckAssistBot",
     "Omgili",
     "Omgilibot",
     "webzio-extended",
@@ -83,7 +92,7 @@ DEFAULT_CRAWLER_PATTERNS = [
     "Meltwater",
     "Seekr",
     "peer39_crawler",
-    "Scrapy",
+    "Scrapy"
 ]
 
 
@@ -320,21 +329,25 @@ def group_patterns_by_category(patterns: List[str]) -> Dict[str, List[str]]:
     """
     # Define known categories and their associated keywords
     categories = {
-        "OpenAI": ["GPT", "OpenAI", "ChatGPT", "OAI"],
+        "OpenAI": ["GPT", "ChatGPT", "OpenAI", "OAI"],
         "Anthropic": ["Claude", "Anthropic"],
-        "Google": ["google", "Google"],
-        "Meta": ["Meta", "Facebook", "LLaMA"],
+        "Google": ["Google", "googlebot", "Googlebot"],
+        "Meta/Facebook": ["Meta", "Facebook", "LLaMA", "facebook"],
         "Cohere": ["Cohere", "cohere"],
         "Perplexity": ["Perplexity"],
         "Apple": ["Apple"],
         "Amazon": ["Amazon"],
+        "Microsoft/Bing": ["Bing", "Copilot", "Sydney"],
         "ByteDance": ["Byte", "Pangle"],
+        "Mistral AI": ["Mistral"],
         "Common Crawl": ["CCBot"],
-        "Allen Institute for AI": ["AI2", "Dolma"]
+        "AI2/Allen Institute": ["AI2", "Dolma"],
+        "DuckDuckGo": ["Duck"],
+        "Huawei": ["Petal", "Pangu"]
     }
     
     # Initialize result dictionary with "Others" category
-    result = {"Others": []}
+    result = {}
     
     # Categorize each pattern
     for pattern in patterns:
@@ -349,6 +362,17 @@ def group_patterns_by_category(patterns: List[str]) -> Dict[str, List[str]]:
                 break
                 
         if not categorized:
+            if "Others" not in result:
+                result["Others"] = []
             result["Others"].append(pattern)
+    
+    # Sort categories alphabetically, but keep "Others" at the end
+    sorted_result = {}
+    for category in sorted([c for c in result.keys() if c != "Others"]):
+        sorted_result[category] = result[category]
+    
+    # Add Others at the end
+    if "Others" in result:
+        sorted_result["Others"] = result["Others"]
             
-    return result 
+    return sorted_result 
