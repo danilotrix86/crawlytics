@@ -28,7 +28,6 @@ const TOP_CRAWLERS_SQL_QUERY = `
         access_logs
     WHERE 
         log_file_id = $1
-        AND status < 400
     GROUP BY 
         crawler_name
     ORDER BY 

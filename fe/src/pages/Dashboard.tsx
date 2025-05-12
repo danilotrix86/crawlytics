@@ -3,7 +3,7 @@ import { TotalLogsCard } from '../components/dashboard/TotalLogsCard';
 import { UniqueLLMs } from '../components/dashboard/UniqueLLMs';
 import { UniqueUrlsCard } from '../components/dashboard/UniqueUrlsCard';
 import { ErrorResponsesCard } from '../components/dashboard/ErrorResponsesCard';
-import UserAgentChart from '../components/dashboard/UserAgentChart';
+import DailyCrawlerActivityChart from '../components/dashboard/DailyCrawlerActivityChart';
 import TopPagesChart from '../components/dashboard/TopPagesChart';
 import { MostActiveCrawlerCard } from '../components/dashboard/MostActiveCrawlerCard';
 import { CrawlersPerPageCard } from '../components/dashboard/CrawlersPerPageCard';
@@ -37,7 +37,7 @@ const Dashboard: React.FC<DashboardProps> = memo(({ className = '' }) => {
 			</div>
 
 			<div className="w-full mb-12">
-				<UserAgentChart />
+				<DailyCrawlerActivityChart />
 			</div>
 			
 			<div className="grid grid-cols-1 gap-4 mb-6">
