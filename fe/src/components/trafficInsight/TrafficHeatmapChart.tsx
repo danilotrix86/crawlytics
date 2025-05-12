@@ -130,19 +130,19 @@ interface RawTrafficData {
 
 // Custom hook for fetching traffic data with SQL
 const useLLMTrafficData = (logFileId: string | null) => {
+    let sqlQuery = LLM_TRAFFIC_HEATMAP_SQL;
+    let params: any[] = [];
+    
+    if (logFileId) {
+        sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+        params = [logFileId];
+    } else {
+        sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+    }
+    
     return useSuspenseQuery<RawTrafficData[], ApiError>({
         queryKey: ['sql', 'llm-traffic', logFileId],
         queryFn: async () => {
-            let sqlQuery = LLM_TRAFFIC_HEATMAP_SQL;
-            let params: any[] = [];
-            
-            if (logFileId) {
-                sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
-                params = [logFileId];
-            } else {
-                sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
-            }
-            
             return await pythonApiFetch<RawTrafficData[]>('/query_sql', {
                 method: 'POST',
                 body: JSON.stringify({

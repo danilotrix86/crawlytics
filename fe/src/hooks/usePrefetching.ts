@@ -14,7 +14,8 @@ import { prefetchTrafficInsightData } from '../utils/prefetchTrafficInsight';
  * Routes that should trigger related data prefetching when active
  */
 const PREFETCH_MAPPING = {
-    '/dashboard': ['/traffic-insight'], // When on dashboard, prefetch traffic insight data
+    '/dashboard': ['/traffic-insight', '/geographic-insight'], // When on dashboard, prefetch both insights
+    '#/dashboard': ['#/traffic-insight', '#/geographic-insight'], // HashRouter versions
     // Add more mappings as needed
 };
 
@@ -27,17 +28,33 @@ export function usePrefetching() {
     const location = useLocation();
     const queryClient = useQueryClient();
     const currentPath = location.pathname;
+    const hashPath = '#' + location.pathname;
 
     // Map of prefetching functions by route
     const prefetchFunctionsByRoute = {
         '/traffic-insight': () => prefetchTrafficInsightData(queryClient),
+        '/geographic-insight': () => prefetchTrafficInsightData(queryClient),
+        '#/traffic-insight': () => prefetchTrafficInsightData(queryClient),
+        '#/geographic-insight': () => prefetchTrafficInsightData(queryClient),
         // Add more routes and their prefetch functions here
     };
 
     // Prefetch based on current location
     useEffect(() => {
-        // Get routes to prefetch based on current location
-        const routesToPrefetch = PREFETCH_MAPPING[currentPath as keyof typeof PREFETCH_MAPPING] || [];
+        // Try both paths - with and without hash
+        let routesToPrefetch = PREFETCH_MAPPING[currentPath as keyof typeof PREFETCH_MAPPING] || [];
+        
+        // If no routes found with pathname, try with hash path
+        if (routesToPrefetch.length === 0) {
+            routesToPrefetch = PREFETCH_MAPPING[hashPath as keyof typeof PREFETCH_MAPPING] || [];
+        }
+        
+        // Always prefetch both insights when on any dashboard screen
+        if (currentPath.includes('dashboard') || hashPath.includes('dashboard')) {
+            // Force prefetch both insights
+            prefetchTrafficInsightData(queryClient);
+            return;
+        }
         
         // Perform prefetching for each related route
         routesToPrefetch.forEach(route => {
@@ -46,14 +63,15 @@ export function usePrefetching() {
                 // Use a small delay to avoid competing with current page rendering
                 setTimeout(() => {
                     prefetchFn();
-                }, 1000);
+                }, 500); // Reduced from 1000ms to 500ms for faster prefetching
             }
         });
-    }, [currentPath, queryClient]);
+    }, [currentPath, hashPath, queryClient]);
 
     // Return methods to manually trigger prefetching
     return {
         prefetchTrafficInsight: () => prefetchTrafficInsightData(queryClient),
+        prefetchGeographicInsight: () => prefetchTrafficInsightData(queryClient),
         // Add more prefetching methods as needed
     };
 } 

@@ -31,7 +31,7 @@ const queryClient = new QueryClient({
 // This helps avoid waterfalls and ensures data is ready when components need it
 const prefetchCriticalData = async () => {
 	try {
-		// Prefetch Traffic Insight data for faster navigation
+		// Prefetch Traffic Insight and Geographic Insight data for faster navigation
 		prefetchTrafficInsightData(queryClient);
 		
 		// Other critical data prefetching...
@@ -49,13 +49,20 @@ prefetchCriticalData();
 
 // Create a navigation event listener to prefetch data when user hovers over links
 document.addEventListener('DOMContentLoaded', () => {
+	// Immediately prefetch all insight data when DOM loads
+	setTimeout(() => {
+		prefetchTrafficInsightData(queryClient);
+	}, 1000);
+
 	// Set up event delegation for tracking mouse hover over navigation links
 	document.body.addEventListener('mouseover', (e) => {
 		const target = e.target as HTMLElement;
-		const navLink = target.closest('a[href="/traffic-insight"]');
+		// Check for links with both regular and hash paths
+		const trafficLink = target.closest('a[href="/traffic-insight"], a[href="#/traffic-insight"]');
+		const geoLink = target.closest('a[href="/geographic-insight"], a[href="#/geographic-insight"]');
 		
-		if (navLink) {
-			// User is hovering over a link to the traffic insight page
+		if (trafficLink || geoLink) {
+			// User is hovering over a link to one of the insight pages
 			prefetchTrafficInsightData(queryClient);
 		}
 	});

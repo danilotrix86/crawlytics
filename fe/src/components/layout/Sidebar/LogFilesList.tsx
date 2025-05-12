@@ -4,6 +4,7 @@ import { useLogFileSelection, LogFile } from '../../../hooks/useLogFiles';
 import { LogFileItem } from './LogFileItem';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 import { useQueryClient } from '@tanstack/react-query';
+import { prefetchTrafficInsightData } from '../../../utils/prefetchTrafficInsight';
 
 /**
  * Component that renders the list of log files
@@ -41,6 +42,11 @@ export const LogFilesList: React.FC = () => {
             
             // Invalidate queries related to the log file to force refetch with new log file ID
             queryClient.invalidateQueries({ queryKey: ['sql'] });
+            
+            // Prefetch data for both insight pages with the new log file
+            setTimeout(() => {
+                prefetchTrafficInsightData(queryClient);
+            }, 100);
             
             // Navigate to the current page to refresh data without full page reload
             navigate(window.location.pathname);

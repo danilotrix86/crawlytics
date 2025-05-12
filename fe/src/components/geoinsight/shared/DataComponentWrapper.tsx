@@ -12,7 +12,14 @@ export const DataComponentWrapper: React.FC<DataComponentWrapperProps> = ({ chil
   const { reset } = useQueryErrorResetBoundary();
   
   return (
-    <ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
+    <ErrorBoundary 
+      onReset={reset} 
+      FallbackComponent={DefaultQueryErrorFallback}
+      onError={(error) => {
+        console.error("Data component error:", error);
+        // Optionally log errors to analytics
+      }}
+    >
       <Suspense fallback={<CardLoadingSpinner />}>
         {children}
       </Suspense>
