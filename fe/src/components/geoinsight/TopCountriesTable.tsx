@@ -72,11 +72,10 @@ const TOP_COUNTRIES_QUERY = `
       END AS country_code,
       COUNT(*) as request_count,
       COUNT(DISTINCT ip_address) as unique_ips,
-      CAST((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM access_logs WHERE log_file_id = ?)) AS REAL) as percentage
+      CAST((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM access_logs {TOTAL_CONDITION})) AS REAL) as percentage
     FROM 
       access_logs
-    WHERE 
-      log_file_id = ?
+    {WHERE_CLAUSE}
     GROUP BY 
       country_code
     ORDER BY 
@@ -103,8 +102,7 @@ const TOP_COUNTRIES_QUERY = `
           COUNT(*) as bot_count
         FROM 
           access_logs a
-        WHERE 
-          log_file_id = ?
+        {BOT_WHERE_CLAUSE}
           AND CASE
             -- Use the same country code mapping as above
             WHEN SUBSTR(a.ip_address, 1, 2) IN ('34', '35', '52', '104', '35') THEN 'US'
@@ -410,11 +408,25 @@ const CountriesTable: React.FC<{ data: CountryData[] }> = ({ data }) => {
 // Inner component with data fetching
 const TopCountriesTableComponent: React.FC<TopCountriesTableProps> = ({ countryData: externalCountryData }) => {
   const logFileId = getCookie(COOKIE_NAME);
-  const params = [logFileId, logFileId, logFileId]; // Three parameters for the query
+  
+  // Prepare SQL query based on log file selection
+  let sqlQuery = TOP_COUNTRIES_QUERY;
+  let params: any[] = [];
+  
+  if (logFileId) {
+    sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "WHERE log_file_id = ?");
+    sqlQuery = sqlQuery.replace("{TOTAL_CONDITION}", "WHERE log_file_id = ?");
+    sqlQuery = sqlQuery.replace("{BOT_WHERE_CLAUSE}", "WHERE log_file_id = ?");
+    params = [logFileId, logFileId, logFileId];
+  } else {
+    sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "");
+    sqlQuery = sqlQuery.replace("{TOTAL_CONDITION}", "");
+    sqlQuery = sqlQuery.replace("{BOT_WHERE_CLAUSE}", "WHERE 1=1");
+  }
 
   // Fetch data using our hook
   const { data: fetchedCountryData = [] } = useSqlData<CountryData[], CountryData[]>(
-    TOP_COUNTRIES_QUERY,
+    sqlQuery,
     params,
     (data) => data || []
   );
@@ -427,7 +439,10 @@ const TopCountriesTableComponent: React.FC<TopCountriesTableProps> = ({ countryD
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-md">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Top Countries by Request Volume</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+          Top Countries by Request Volume
+          {!logFileId && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">- All Log Files</span>}
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">Geographic distribution of LLM crawler requests</p>
       </div>
       <div className="max-h-[600px] overflow-auto">

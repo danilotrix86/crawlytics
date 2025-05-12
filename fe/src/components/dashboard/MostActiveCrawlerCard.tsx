@@ -22,8 +22,8 @@ const COOKIE_NAME = 'selected_log_file';
 const MostActiveCrawlerCardComponent: React.FC = () => {
   const logFileId = getCookie(COOKIE_NAME);
   
-  // Query to get most active crawler and total requests
-  const sqlQuery = `
+  // Base SQL with placeholders for the log_file_id condition
+  let sqlQuery = `
     SELECT 
       crawler_data.crawler_name,
       crawler_data.total,
@@ -32,7 +32,7 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
       (
         SELECT COALESCE(crawler_name, 'Unknown') AS crawler_name, COUNT(*) AS total
         FROM access_logs
-        WHERE log_file_id = $1 AND status < 400
+        WHERE 1=1 {LOG_FILE_CONDITION1}
         GROUP BY crawler_name
         ORDER BY total DESC
         LIMIT 1
@@ -40,11 +40,24 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
       (
         SELECT COUNT(*) AS count
         FROM access_logs
-        WHERE log_file_id = $2 AND status < 400
+        WHERE 1=1 {LOG_FILE_CONDITION2}
       ) AS total_data
   `;
   
-  const params = [logFileId, logFileId];
+  // Prepare parameters and adjust query based on log file selection
+  let params: any[] = [];
+  
+  if (logFileId) {
+    // Replace placeholders with actual conditions
+    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION1}", "AND log_file_id = ?");
+    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION2}", "AND log_file_id = ?");
+    // Add the parameter twice since it's used in both subqueries
+    params = [logFileId, logFileId];
+  } else {
+    // Remove the placeholders when no log file is selected
+    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION1}", "");
+    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION2}", "");
+  }
 
   const { data: crawlerData } = useSqlData<CrawlerData[], CrawlerData>(
     sqlQuery,
@@ -61,7 +74,7 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
     data: {
       title: "🤖 Top Crawler",
       number: crawlerName,
-      subtext: `${percentage}% of traffic (${total} requests)`,
+      subtext: `${percentage}% of traffic (${total} requests)${logFileId ? "" : " - All Log Files"}`,
     },
     icon: Award,
   };

@@ -11,7 +11,7 @@ import { ApexOptions } from 'apexcharts';
 // Constants
 const SELECTED_LOG_FILE_COOKIE = 'selected_log_file';
 
-// SQL Query for daily crawler activity
+// SQL Query for daily crawler activity with placeholder for log_file_id condition
 const DAILY_CRAWLER_ACTIVITY_SQL = `
     SELECT 
         date(time) as date,
@@ -20,8 +20,8 @@ const DAILY_CRAWLER_ACTIVITY_SQL = `
     FROM 
         access_logs
     WHERE 
-        log_file_id = ?
-        AND crawler_name IS NOT NULL
+        crawler_name IS NOT NULL
+        {LOG_FILE_CONDITION}
     GROUP BY 
         date(time),
         crawler_name
@@ -107,10 +107,21 @@ const DailyCrawlerActivityContent: React.FC = () => {
     // Get selected log file from cookie
     const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE) || '';
     
+    // Prepare SQL query based on log file selection
+    let sqlQuery = DAILY_CRAWLER_ACTIVITY_SQL;
+    let params: any[] = [];
+    
+    if (logFileId) {
+        sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+        params = [logFileId];
+    } else {
+        sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+    }
+    
     // Fetch data
     const { data } = useSqlData<CrawlerDataPoint[]>(
-        DAILY_CRAWLER_ACTIVITY_SQL,
-        [logFileId]
+        sqlQuery,
+        params
     );
     
     // Safe data handling
@@ -133,7 +144,7 @@ const DailyCrawlerActivityContent: React.FC = () => {
             stacked: false
         },
         title: {
-            text: '🕸️ Top 7 Crawler Activity',
+            text: `🕸️ Top 7 Crawler Activity${logFileId ? "" : " - All Log Files"}`,
             align: 'left'
         },
         xaxis: {

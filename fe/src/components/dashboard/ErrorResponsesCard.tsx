@@ -21,15 +21,20 @@ const COOKIE_NAME = 'selected_log_file';
 // Inner component for logic
 const ErrorResponsesCardComponent: React.FC = () => {
 	const logFileId = getCookie(COOKIE_NAME);
-	const sqlQuery = `
+	let sqlQuery = `
 		SELECT 
 			COUNT(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE NULL END) as client_errors,
 			COUNT(CASE WHEN status >= 500 THEN 1 ELSE NULL END) as server_errors,
 			COUNT(*) as total_requests
 		FROM access_logs 
-		WHERE log_file_id = $1
 	`;
-	const params = [logFileId];
+	let params: any[] = [];
+	
+	// Only filter by log_file_id if a file is selected
+	if (logFileId) {
+		sqlQuery += `WHERE log_file_id = ?`;
+		params = [logFileId];
+	}
 
 	const { data: errorData } = useSqlData<ErrorRateData[], ErrorRateData>(
 		sqlQuery,
@@ -51,7 +56,7 @@ const ErrorResponsesCardComponent: React.FC = () => {
 		data: {
 			title: "⚠️ Error Rate",
 			number: `${errorRate}%`,
-			subtext: `${totalErrors} errors (${clientErrors} client / ${serverErrors} server)`,
+			subtext: `${totalErrors} errors (${clientErrors} client / ${serverErrors} server)${logFileId ? "" : " - All Log Files"}`,
 		},
 		icon: ExclamationCircle,
 	};

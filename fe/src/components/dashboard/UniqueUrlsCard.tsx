@@ -19,7 +19,7 @@ const COOKIE_NAME = 'selected_log_file';
 // Inner component for logic
 const UniqueUrlsCardComponent: React.FC = () => {
 	const logFileId = getCookie(COOKIE_NAME);
-	const sqlQuery = `
+	let sqlQuery = `
 		SELECT COUNT(DISTINCT 
 			CASE 
 				WHEN path = '/' THEN '/'
@@ -31,10 +31,15 @@ const UniqueUrlsCardComponent: React.FC = () => {
 			END
 		) as count 
 		FROM access_logs 
-		WHERE log_file_id = ? 
-		AND status < 400
+		WHERE 1=1
 	`;
-	const params = [logFileId];
+	let params: any[] = [];
+	
+	// Only filter by log_file_id if a file is selected
+	if (logFileId) {
+		sqlQuery = sqlQuery.replace("WHERE", "WHERE log_file_id = ? AND");
+		params = [logFileId];
+	}
 
 	const { data: uniqueUrlData } = useSqlData<UniqueUrlCount[], UniqueUrlCount>(
 		sqlQuery,
@@ -45,7 +50,7 @@ const UniqueUrlsCardComponent: React.FC = () => {
 	const statsCardProps = {
 		data: {
 			title: "🔗 Unique URLs Requested",
-			subtext: "Number of distinct URL paths hit",
+			subtext: logFileId ? "Selected Log File" : "All Log Files",
 			number: uniqueUrlData?.count?.toString() ?? "0",
 		},
 		icon: Link,

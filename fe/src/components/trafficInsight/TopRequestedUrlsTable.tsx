@@ -27,12 +27,11 @@ const TOP_URLS_QUERY = `
     END AS page_path,
     COUNT(*) as hits,
     COUNT(DISTINCT ip_address) as unique_ips,
-    CAST((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM access_logs WHERE log_file_id = ? AND status < 400)) AS REAL) as percentage
+    CAST((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM access_logs {TOTAL_CONDITION})) AS REAL) as percentage
   FROM 
     access_logs
   WHERE 
-    log_file_id = ?
-    AND status < 400 -- Only count successful requests
+    1=1 {LOG_FILE_CONDITION}
   GROUP BY 
     page_path
   ORDER BY 
@@ -227,16 +226,34 @@ const CustomTable: React.FC<{ data: UrlData[] }> = ({ data }) => {
 // Inner component for logic
 const TopRequestedUrlsTableComponent: React.FC = () => {
 	const logFileId = getCookie(COOKIE_NAME);
-	const params = [logFileId, logFileId]; // Match the prefetch function parameter format
+	
+	// Prepare SQL query based on log file selection
+	let sqlQuery = TOP_URLS_QUERY;
+	let params: any[] = [];
+	
+	if (logFileId) {
+		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+		sqlQuery = sqlQuery.replace("{TOTAL_CONDITION}", "WHERE log_file_id = ?");
+		params = [logFileId, logFileId];
+	} else {
+		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+		sqlQuery = sqlQuery.replace("{TOTAL_CONDITION}", "");
+	}
 
 	// Fetch data using the hook
 	const { data: rawData } = useSqlData<UrlData[], UrlData[]>(
-		TOP_URLS_QUERY,
+		sqlQuery,
 		params
 	);
 
 	return (
 		<div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-md">
+			<div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+				<h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
+					Top Requested URLs
+					{!logFileId && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">- All Log Files</span>}
+				</h3>
+			</div>
 			<div className="max-h-[500px] overflow-auto">
 				<CustomTable data={rawData || []} />
 			</div>

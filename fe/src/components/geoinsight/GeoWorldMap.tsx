@@ -72,8 +72,7 @@ const GEO_DATA_QUERY = `
     COUNT(*) as request_count
   FROM 
     access_logs
-  WHERE 
-    log_file_id = ?
+  {WHERE_CLAUSE}
   GROUP BY 
     country_code
   ORDER BY 
@@ -229,13 +228,23 @@ const getCountryName = (code: string): string => {
 // Inner component with data fetching
 const GeoWorldMapComponent: React.FC<GeoWorldMapProps> = ({ countryHits: externalCountryHits }) => {
   const logFileId = getCookie(COOKIE_NAME);
-  const params = [logFileId];
+  
+  // Prepare SQL query based on log file selection
+  let sqlQuery = GEO_DATA_QUERY;
+  let params: any[] = [];
+  
+  if (logFileId) {
+    sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "WHERE log_file_id = ?");
+    params = [logFileId];
+  } else {
+    sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "");
+  }
   
   const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
   
   // Fetch geo data if not provided externally
   const { data: countryData = [] } = useSqlData<CountryData[], CountryData[]>(
-    GEO_DATA_QUERY,
+    sqlQuery,
     params,
     (data) => data || []
   );
@@ -269,7 +278,10 @@ const GeoWorldMapComponent: React.FC<GeoWorldMapProps> = ({ countryHits: externa
 
   return (
     <div className="border rounded-lg bg-white dark:bg-gray-800 shadow-md p-4 h-full">
-      <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">Global Request Distribution</h2>
+      <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
+        Global Request Distribution
+        {!logFileId && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">- All Log Files</span>}
+      </h2>
       
       {/* Legend */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">

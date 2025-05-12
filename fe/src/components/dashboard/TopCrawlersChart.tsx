@@ -19,15 +19,14 @@ const useSelectedLogFile = () => {
 	return getCookie(COOKIE_NAME);
 };
 
-// SQL Query for TopCrawlersChart
+// SQL Query for TopCrawlersChart with placeholder for log_file_id condition
 const TOP_CRAWLERS_SQL_QUERY = `
     SELECT 
         COALESCE(crawler_name, 'Unknown') AS page_path,
         COUNT(*) as count
     FROM 
         access_logs
-    WHERE 
-        log_file_id = $1
+    {WHERE_CLAUSE}
     GROUP BY 
         crawler_name
     ORDER BY 
@@ -35,37 +34,52 @@ const TOP_CRAWLERS_SQL_QUERY = `
     LIMIT 5;
 `;
 
-// Chart configuration
-const CHART_CONFIG: Partial<BarChartConfig> = {
-	title: '🕷️ Top Crawlers by Requests',
-	xAxisTitle: 'Requests',
-	yAxisTitle: 'Crawler Name',
-	horizontal: true,
-	height: CHART_DEFAULTS.height.medium,
-	tooltipSuffix: 'requests',
-	emptyMessage: 'No crawler data available',
-	showDataLabels: true,
-	limit: 5,
-	sortDirection: 'desc',
-	distributed: true,
-	colors: EXTENDED_COLORS.slice(0, 5) // Use different color palette than pages chart
+// Chart configuration - will be modified at runtime based on log file selection
+const getChartConfig = (logFileId: string | null): Partial<BarChartConfig> => {
+	return {
+		title: `🕷️ Top Crawlers by Requests${logFileId ? "" : " - All Log Files"}`,
+		xAxisTitle: 'Requests',
+		yAxisTitle: 'Crawler Name',
+		horizontal: true,
+		height: CHART_DEFAULTS.height.medium,
+		tooltipSuffix: 'requests',
+		emptyMessage: 'No crawler data available',
+		showDataLabels: true,
+		limit: 5,
+		sortDirection: 'desc',
+		distributed: true,
+		colors: EXTENDED_COLORS.slice(0, 5) // Use different color palette than pages chart
+	};
 };
 
 // Inner component for logic
 const TopCrawlersChartComponent: React.FC = () => {
 	const logFileId = useSelectedLogFile();
-	const params = [logFileId];
+	
+	// Prepare SQL query based on log file selection
+	let sqlQuery = TOP_CRAWLERS_SQL_QUERY;
+	let params: any[] = [];
+	
+	if (logFileId) {
+		sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "WHERE log_file_id = ?");
+		params = [logFileId];
+	} else {
+		sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "");
+	}
+	
+	// Get chart configuration with dynamic title
+	const CHART_CONFIG = getChartConfig(logFileId);
 
 	// Fetch data using the hook with TanStack Query v5 features
 	const { data: rawData } = useSqlData<RawTopPagesData[], RawTopPagesData[]>(
-		TOP_CRAWLERS_SQL_QUERY,
+		sqlQuery,
 		params,
 	);
 
 	// Memoize the transformed data to prevent unnecessary recalculations
 	const chartData = useMemo(() => {
 		return transformTopPagesData(rawData || [], CHART_CONFIG);
-	}, [rawData]);
+	}, [rawData, CHART_CONFIG]);
 
 	return (
 		<BarChartUI 

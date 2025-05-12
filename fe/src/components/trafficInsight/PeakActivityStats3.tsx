@@ -26,24 +26,35 @@ const formatHour = (hour: number | null | undefined): string => {
 
 const PeakActivityStats3Component: React.FC = () => {
 	const logFileId = getCookie(COOKIE_NAME);
-	const sqlQuery = `
+	let sqlQuery = `
 		WITH HourlyCounts AS (
 			SELECT 
 				CAST(strftime('%H', time) AS INTEGER) as hour_of_day,
 				COUNT(*) as request_count
 			FROM access_logs
-			WHERE log_file_id = ? AND time IS NOT NULL
+			WHERE time IS NOT NULL {LOG_FILE_CONDITION}
 			GROUP BY hour_of_day
 		)
 		SELECT 
 			hour_of_day,
 			request_count,
-			CAST((request_count * 100.0 / (SELECT COUNT(*) FROM access_logs WHERE log_file_id = ?)) AS INTEGER) as percentage
+			CAST((request_count * 100.0 / (SELECT COUNT(*) FROM access_logs {TOTAL_LOG_FILE_CONDITION})) AS INTEGER) as percentage
 		FROM HourlyCounts
 		ORDER BY request_count DESC
 		LIMIT 1 OFFSET 2;
 	`;
-	const params = [logFileId, logFileId];
+	
+	let params: any[] = [];
+	
+	// Only filter by log_file_id if a file is selected
+	if (logFileId) {
+		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+		sqlQuery = sqlQuery.replace("{TOTAL_LOG_FILE_CONDITION}", "WHERE log_file_id = ?");
+		params = [logFileId, logFileId];
+	} else {
+		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+		sqlQuery = sqlQuery.replace("{TOTAL_LOG_FILE_CONDITION}", "");
+	}
 
 	const { data: peakHours } = useSqlData<PeakHourData[], PeakHourData[]>(
 		sqlQuery,
@@ -61,7 +72,7 @@ const PeakActivityStats3Component: React.FC = () => {
 		data: {
 			title: formatHour(hourData.hour_of_day),
 			number: '⏱️ Peak Activity 3',
-			subtext: `${hourData.request_count.toLocaleString()} requests (${hourData.percentage}%)`,
+			subtext: `${hourData.request_count.toLocaleString()} requests (${hourData.percentage}%)${logFileId ? "" : " - All Log Files"}`,
 		},
 		icon: Clock,
 	};

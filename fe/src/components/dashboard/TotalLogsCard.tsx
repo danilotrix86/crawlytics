@@ -19,8 +19,14 @@ const COOKIE_NAME = 'selected_log_file';
 // Refactored component using hooks
 const TotalLogsCardComponent: React.FC = () => {
 	const logFileId = getCookie(COOKIE_NAME);
-	const sqlQuery = "SELECT COUNT(*) as count FROM access_logs WHERE log_file_id = ?";
-	const params = [logFileId];
+	let sqlQuery = "SELECT COUNT(*) as count FROM access_logs";
+	let params: any[] = [];
+	
+	// Only filter by log_file_id if a file is selected
+	if (logFileId) {
+		sqlQuery += " WHERE log_file_id = ?";
+		params = [logFileId];
+	}
 
 	// Fetch data using the hook
 	const { data: logCountData } = useSqlData<LogCount[], LogCount>(
@@ -33,7 +39,7 @@ const TotalLogsCardComponent: React.FC = () => {
 	const statsCardProps = {
 		data: {
 			title: "📋 Total Log Entries",
-			subtext: "Total Logs",
+			subtext: logFileId ? "Selected Log File" : "All Log Files",
 			number: logCountData?.count?.toString() ?? "0",
 		},
 		icon: List,

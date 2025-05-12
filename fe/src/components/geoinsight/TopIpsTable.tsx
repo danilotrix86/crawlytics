@@ -31,7 +31,7 @@ const TOP_IPS_QUERY = `
       SELECT crawler_name 
       FROM access_logs a2 
       WHERE a2.ip_address = a1.ip_address 
-        AND a2.log_file_id = ? 
+        {CRAWLER_LOG_FILE_CONDITION}
         AND crawler_name IS NOT NULL 
         AND crawler_name != '' 
       GROUP BY crawler_name 
@@ -41,8 +41,7 @@ const TOP_IPS_QUERY = `
     MAX(time) as last_seen
   FROM 
     access_logs a1
-  WHERE 
-    log_file_id = ?
+  {WHERE_CLAUSE}
   GROUP BY 
     ip_address
   ORDER BY 
@@ -258,11 +257,23 @@ const IpsTable: React.FC<{ data: IpData[] }> = ({ data }) => {
 // Inner component with data fetching
 const TopIpsTableComponent: React.FC<TopIpsTableProps> = ({ ipData: externalIpData }) => {
   const logFileId = getCookie(COOKIE_NAME);
-  const params = [logFileId, logFileId]; // Two parameters for the query
+  
+  // Prepare SQL query based on log file selection
+  let sqlQuery = TOP_IPS_QUERY;
+  let params: any[] = [];
+  
+  if (logFileId) {
+    sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "WHERE log_file_id = ?");
+    sqlQuery = sqlQuery.replace("{CRAWLER_LOG_FILE_CONDITION}", "AND log_file_id = ?");
+    params = [logFileId, logFileId];
+  } else {
+    sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "");
+    sqlQuery = sqlQuery.replace("{CRAWLER_LOG_FILE_CONDITION}", "");
+  }
 
   // Fetch data using our hook
   const { data: fetchedIpData = [] } = useSqlData<IpData[], IpData[]>(
-    TOP_IPS_QUERY,
+    sqlQuery,
     params,
     (data) => data || []
   );
@@ -275,7 +286,10 @@ const TopIpsTableComponent: React.FC<TopIpsTableProps> = ({ ipData: externalIpDa
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-md">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Top IP Addresses / Data Centers</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+          Top IP Addresses / Data Centers
+          {!logFileId && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">- All Log Files</span>}
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">Most active individual IPs with host information</p>
       </div>
       <div className="max-h-[600px] overflow-auto">

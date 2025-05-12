@@ -21,8 +21,8 @@ const COOKIE_NAME = 'selected_log_file';
 const CrawlersPerPageCardComponent: React.FC = () => {
   const logFileId = getCookie(COOKIE_NAME);
   
-  // Query to calculate average unique crawlers per page (SQLite version)
-  const sqlQuery = `
+  // Base SQL with placeholder for the log_file_id condition
+  let sqlQuery = `
     WITH 
       page_crawler_counts AS (
         SELECT 
@@ -30,8 +30,8 @@ const CrawlersPerPageCardComponent: React.FC = () => {
           COUNT(DISTINCT crawler_name) AS unique_crawlers
         FROM access_logs
         WHERE 
-          log_file_id = ? 
-          AND crawler_name IS NOT NULL
+          crawler_name IS NOT NULL
+          {LOG_FILE_CONDITION}
         GROUP BY path
       )
     SELECT 
@@ -40,7 +40,15 @@ const CrawlersPerPageCardComponent: React.FC = () => {
     FROM page_crawler_counts
   `;
   
-  const params = [logFileId];
+  let params: any[] = [];
+  
+  // Only filter by log_file_id if a file is selected
+  if (logFileId) {
+    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+    params = [logFileId];
+  } else {
+    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+  }
 
   const { data: avgData } = useSqlData<AvgCrawlersData[], AvgCrawlersData>(
     sqlQuery,
@@ -59,7 +67,7 @@ const CrawlersPerPageCardComponent: React.FC = () => {
     data: {
       title: "🕸️ Crawlers per Page",
       number: formattedAvg,
-      subtext: `Across ${totalPages} unique pages`,
+      subtext: `Across ${totalPages} unique pages${logFileId ? "" : " - All Log Files"}`,
     },
     icon: Link,
   };

@@ -57,7 +57,7 @@ const LLM_TRAFFIC_HEATMAP_SQL = `
         FROM
             access_logs
         WHERE
-            log_file_id = ?
+            1=1 {LOG_FILE_CONDITION}
     )
     SELECT 
         day_of_week,
@@ -102,8 +102,8 @@ const generateColorRanges = (maxCount: number): any[] => {
 
 
 // Chart configuration setup function
-const getChartConfig = (title: string, maxCount: number): Partial<HeatmapChartConfig> => ({
-	title: title,
+const getChartConfig = (title: string, maxCount: number, logFileId: string | null): Partial<HeatmapChartConfig> => ({
+	title: `${title}${logFileId ? "" : " - All Log Files"}`,
 	height: CHART_DEFAULTS.height.medium, // Adjust height as needed
 	emptyMessage: 'No Traffic Data Available for this Period',
 	showDataLabels: false, // Heatmaps often look cluttered with labels
@@ -130,17 +130,23 @@ interface RawTrafficData {
 
 // Custom hook for fetching traffic data with SQL
 const useLLMTrafficData = (logFileId: string | null) => {
-    const params = useMemo(() => [logFileId], [logFileId]);
-
     return useSuspenseQuery<RawTrafficData[], ApiError>({
         queryKey: ['sql', 'llm-traffic', logFileId],
         queryFn: async () => {
-            if (!logFileId) return [];
+            let sqlQuery = LLM_TRAFFIC_HEATMAP_SQL;
+            let params: any[] = [];
+            
+            if (logFileId) {
+                sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+                params = [logFileId];
+            } else {
+                sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+            }
             
             return await pythonApiFetch<RawTrafficData[]>('/query_sql', {
                 method: 'POST',
                 body: JSON.stringify({
-                    query: LLM_TRAFFIC_HEATMAP_SQL,
+                    query: sqlQuery,
                     params,
                     limit: 1000
                 })
@@ -169,7 +175,7 @@ const TrafficHeatmapChartComponent: React.FC = () => {
         const maxCount = Math.max(0, ...transformedApiData.map(d => d.value));
 
         const title = '🔥 Traffic Volume by Day and Hour';
-        const config = getChartConfig(title, maxCount);
+        const config = getChartConfig(title, maxCount, logFileId);
 
         const transformedData = transformGenericHeatmapData(
             transformedApiData,
@@ -179,7 +185,7 @@ const TrafficHeatmapChartComponent: React.FC = () => {
         );
 
         return transformedData;
-	}, [rawData]);
+	}, [rawData, logFileId]);
 
 	return (
 		<div className="flex flex-col">

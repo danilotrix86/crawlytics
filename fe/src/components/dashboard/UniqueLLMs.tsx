@@ -19,8 +19,18 @@ const COOKIE_NAME = 'selected_log_file';
 // Inner component for logic
 const UniqueLLMsCardComponent: React.FC = () => {
 	const logFileId = getCookie(COOKIE_NAME);
-	const sqlQuery = "SELECT COUNT(DISTINCT crawler_name) as count FROM access_logs WHERE log_file_id = ? AND crawler_name IS NOT NULL";
-	const params = [logFileId];
+	let sqlQuery = "SELECT COUNT(DISTINCT crawler_name) as count FROM access_logs";
+	let params: any[] = [];
+	
+	// Only filter by log_file_id if a file is selected
+	if (logFileId) {
+		sqlQuery += " WHERE log_file_id = ?";
+		params = [logFileId];
+		// Add the crawler_name IS NOT NULL condition
+		sqlQuery += " AND crawler_name IS NOT NULL";
+	} else {
+		sqlQuery += " WHERE crawler_name IS NOT NULL";
+	}
 
 	const { data: uniqueLLMData } = useSqlData<UniqueLLMCount[], UniqueLLMCount>(
 		sqlQuery,
@@ -31,7 +41,7 @@ const UniqueLLMsCardComponent: React.FC = () => {
 	const statsCardProps = {
 		data: {
 			title: "🧠 Unique LLM Crawlers",
-			subtext: "Different crawler types",
+			subtext: logFileId ? "Selected Log File" : "All Log Files",
 			number: uniqueLLMData?.count?.toString() ?? "0",
 		},
 		icon: Chart,

@@ -19,7 +19,7 @@ const useSelectedLogFile = () => {
 	return getCookie(COOKIE_NAME);
 };
 
-// SQL Query for TopPagesChart with better path extraction
+// SQL Query for TopPagesChart with better path extraction and placeholder for log_file_id condition
 const TOP_PAGES_SQL_QUERY = `
     SELECT 
         CASE 
@@ -34,8 +34,7 @@ const TOP_PAGES_SQL_QUERY = `
     FROM 
         access_logs
     WHERE 
-        log_file_id = ? -- Parameter 1: log_file_id
-        AND status < 400 -- Only count successful requests
+        1=1 {LOG_FILE_CONDITION} -- Count all requests, including errors
     GROUP BY 
         page_path
     ORDER BY 
@@ -43,37 +42,52 @@ const TOP_PAGES_SQL_QUERY = `
     LIMIT 10;
 `;
 
-// Chart configuration
-const CHART_CONFIG: Partial<BarChartConfig> = {
-	title: '📄 Top Requested Pages',
-	xAxisTitle: 'Visits',
-	yAxisTitle: 'Page URL',
-	horizontal: true,
-	height: CHART_DEFAULTS.height.medium,
-	tooltipSuffix: 'visits',
-	emptyMessage: 'No page view data available',
-	showDataLabels: true,
-	limit: 5,
-	sortDirection: 'desc',
-	distributed: true,
-	colors: EXTENDED_COLORS.slice(0, 5) // Take first 5 colors from extended palette
+// Chart configuration - will be modified at runtime based on log file selection
+const getChartConfig = (logFileId: string | null): Partial<BarChartConfig> => {
+	return {
+		title: `📄 Top Requested Pages${logFileId ? "" : " - All Log Files"}`,
+		xAxisTitle: 'Visits',
+		yAxisTitle: 'Page URL',
+		horizontal: true,
+		height: CHART_DEFAULTS.height.medium,
+		tooltipSuffix: 'visits',
+		emptyMessage: 'No page view data available',
+		showDataLabels: true,
+		limit: 5,
+		sortDirection: 'desc',
+		distributed: true,
+		colors: EXTENDED_COLORS.slice(0, 5) // Take first 5 colors from extended palette
+	};
 };
 
 // Inner component for logic
 const TopPagesChartComponent: React.FC = () => {
 	const logFileId = useSelectedLogFile();
-	const params = [logFileId];
+	
+	// Prepare SQL query based on log file selection
+	let sqlQuery = TOP_PAGES_SQL_QUERY;
+	let params: any[] = [];
+	
+	if (logFileId) {
+		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
+		params = [logFileId];
+	} else {
+		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
+	}
+	
+	// Get chart configuration with dynamic title
+	const CHART_CONFIG = getChartConfig(logFileId);
 
 	// Fetch data using the hook with TanStack Query v5 features
 	const { data: rawData } = useSqlData<RawTopPagesData[], RawTopPagesData[]>(
-		TOP_PAGES_SQL_QUERY,
+		sqlQuery,
 		params,
 	);
 
 	// Memoize the transformed data to prevent unnecessary recalculations
 	const chartData = useMemo(() => {
 		return transformTopPagesData(rawData || [], CHART_CONFIG);
-	}, [rawData]);
+	}, [rawData, CHART_CONFIG]);
 
 	return (
 		<BarChartUI 
