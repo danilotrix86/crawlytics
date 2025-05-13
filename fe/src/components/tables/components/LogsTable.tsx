@@ -89,8 +89,6 @@ const LogsTable: React.FC<LogsTableProps> = ({
                     return <td key={col.key} className="py-3 px-4">
                       {item.crawler_name || <span className="text-gray-400">Unknown</span>}
                     </td>;
-                  case 'response_time_ms':
-                    return <td key={col.key} className="py-3 px-4">{item.response_time_ms}</td>;
                   default:
                     return null;
                 }

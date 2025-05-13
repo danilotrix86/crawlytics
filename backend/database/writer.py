@@ -124,9 +124,9 @@ class LogWriter:
         # Prepare the INSERT statement
         query = """
         INSERT INTO access_logs
-            (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, response_time_ms, log_file_id)
+            (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         # Prepare parameters list
@@ -147,7 +147,6 @@ class LogWriter:
                 log.get("crawler_name"),
                 log.get("referer"),
                 log.get("request_id"),
-                log.get("response_time_ms"),
                 log.get("log_file_id")
             ))
         
@@ -177,9 +176,9 @@ class LogWriter:
             # Prepare the INSERT statement
             query = """
             INSERT INTO access_logs
-                (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, response_time_ms, log_file_id)
+                (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id)
             VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
             for log in logs:
@@ -199,7 +198,6 @@ class LogWriter:
                         log.get("crawler_name"),
                         log.get("referer"),
                         log.get("request_id"),
-                        log.get("response_time_ms"),
                         log.get("log_file_id")
                     ))
                     inserted += 1

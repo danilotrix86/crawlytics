@@ -19,7 +19,6 @@ interface LogEntry {
   crawler_name: string;
   referer: string;
   request_id: string;
-  response_time_ms: number;
   log_file_id: string;
 }
 
@@ -155,8 +154,7 @@ const LogsTableComponent: React.FC = () => {
       'crawler_name',
       'Crawler',
       (item) => item?.crawler_name ? item.crawler_name : <span className="text-gray-400">Unknown</span>
-    ),
-    createTextColumn<LogEntry>('response_time_ms', 'Response Time (ms)')
+    )
   ], [createTextColumn, createCustomColumn]);
 
   // Handle filter changes

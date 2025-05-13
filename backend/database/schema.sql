@@ -20,7 +20,6 @@ CREATE TABLE IF NOT EXISTS access_logs (
     crawler_name TEXT,
     referer TEXT,
     request_id TEXT,     -- Store UUID as text
-    response_time_ms INTEGER,
     log_file_id TEXT REFERENCES log_files(log_file_id)
 );
 

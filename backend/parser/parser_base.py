@@ -22,7 +22,6 @@ class LogEntry:
     crawler_name: Optional[str] = None
     referer: Optional[str] = None
     request_id: Optional[uuid.UUID] = None
-    response_time_ms: Optional[int] = None
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert log entry to dictionary format."""
@@ -35,8 +34,7 @@ class LogEntry:
             "user_agent": self.user_agent,
             "crawler_name": self.crawler_name,
             "referer": self.referer,
-            "request_id": self.request_id,
-            "response_time_ms": self.response_time_ms
+            "request_id": self.request_id
         }
 
 
@@ -113,9 +111,5 @@ class LogParser(ABC):
         # Extract request_id if not already present
         if "request_id" not in log_data or not log_data["request_id"]:
             log_data["request_id"] = self.extract_request_id(log_data["path"])
-            
-        # Default response_time_ms if not present
-        if "response_time_ms" not in log_data:
-            log_data["response_time_ms"] = None
             
         return log_data 

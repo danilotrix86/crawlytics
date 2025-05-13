@@ -12,7 +12,6 @@ export interface LogEntry {
   crawler_name: string;
   referer: string;
   request_id: string;
-  response_time_ms: number;
   log_file_id: string;
 }
 
@@ -23,7 +22,7 @@ export interface LogFilters {
   path?: string;
 }
 
-export type ColumnKey = 'time' | 'ip_address' | 'method' | 'path' | 'status' | 'crawler_name' | 'response_time_ms';
+export type ColumnKey = 'time' | 'ip_address' | 'method' | 'path' | 'status' | 'crawler_name';
 
 export const ALL_COLUMNS = [
   { key: 'time', label: 'Time' },
@@ -32,7 +31,6 @@ export const ALL_COLUMNS = [
   { key: 'path', label: 'Path' },
   { key: 'status', label: 'Status' },
   { key: 'crawler_name', label: 'Crawler' },
-  { key: 'response_time_ms', label: 'Response Time (ms)' },
 ] as const;
 
 export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'HEAD'];
@@ -197,7 +195,7 @@ export const useLogsFilters = (logFileId: string | null) => {
     if (sort.column) {
       // Prevent SQL injection by only allowing known columns
       const allowedColumns: (keyof LogEntry)[] = [
-        'time', 'ip_address', 'method', 'path', 'status', 'crawler_name', 'response_time_ms'
+        'time', 'ip_address', 'method', 'path', 'status', 'crawler_name'
       ];
       if (allowedColumns.includes(sort.column)) {
         query += ` ORDER BY ${sort.column} ${sort.direction.toUpperCase()}`;
