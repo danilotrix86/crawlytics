@@ -1,13 +1,12 @@
-import React, { ComponentType, ReactNode, Suspense, useMemo, useRef, useEffect, useContext } from 'react';
+import React, { useMemo, useEffect, useContext } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSuspenseQuery, useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
-import { defaultQueryOptions, ApiError } from './queries/types';
+import { useSuspenseQuery } from '@tanstack/react-query';
+import { ApiError, defaultQueryOptions } from './queries/types';
 import { pythonApiFetch } from '../utils/pythonApiClient';
-import { getCookie } from '../utils/cookies';
 import { LogFileContext } from '../App';
 
-// Query instance cache for deduplication
+// ===== Internal Cache Management =====
+// Query instance cache for deduplication of in-flight requests
 const queryCache = new Map<string, Promise<any>>();
 
 // Global reference to queries that are currently rendering
@@ -24,6 +23,12 @@ function getStableQueryKey(sqlQuery: string, params: any[], limit: number, logFi
 /**
  * Hook version of createSqlComponent using Suspense for data fetching
  * Optimized for static log files with infinite cache life and request deduplication
+ * 
+ * @param sqlQuery - SQL query string
+ * @param params - SQL query parameters
+ * @param transformer - Optional function to transform the query result
+ * @param limit - Maximum number of results to return
+ * @returns Object containing data and refetch function
  */
 export function useSqlData<DataType = any, TransformedType = DataType>(
 	sqlQuery: string,
@@ -31,10 +36,7 @@ export function useSqlData<DataType = any, TransformedType = DataType>(
 	transformer?: (data: DataType) => TransformedType,
 	limit: number = 1000
 ) {
-	// DEBUG: Log component mount/render with SQL query hash
-	console.debug(`[SQL Debug] useSqlData called with query hash: ${sqlQuery.substring(0, 20)}...`);
-	
-	// Get current log file ID from context instead of cookies
+	// Get current log file ID from context
 	const logFileId = useContext(LogFileContext) || 'all';
 	
 	// Create a stable query key for the React Query cache
@@ -63,13 +65,10 @@ export function useSqlData<DataType = any, TransformedType = DataType>(
 		queryKey,
 		queryFn: async () => {
 			try {
-				// DEBUG: Log when queryFn is executed
-				console.debug(`[SQL Debug] Executing queryFn for: ${dedupeKey.substring(0, 40)}...`);
-				
 				// Check if another component is already rendering this exact query
 				// This provides deduplication during initial renders
 				if (renderingQueries.has(dedupeKey) && renderingQueries.size > 1) {
-					console.info(`[SQL Debug] Another component is already handling this query, waiting...`);
+					console.info(`Another component is already handling this query, waiting...`);
 					
 					// Wait a tiny bit for the first component's query to start
 					await new Promise(resolve => setTimeout(resolve, 5));

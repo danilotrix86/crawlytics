@@ -1,23 +1,36 @@
-// Type declaration for Vite environment variables
+// ===== Environment and Meta Types =====
+/**
+ * Type declaration for Vite environment variables
+ */
 export interface ImportMetaEnv {
 	readonly VITE_API_BASE_URL: string;
 }
 
-// Augment the import.meta object
+/**
+ * Augment the import.meta object
+ */
 export interface ImportMeta {
 	readonly env: ImportMetaEnv;
 }
 
-// Types for request options
+// ===== API Request/Response Types =====
+/**
+ * HTTP method types
+ */
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
 
+/**
+ * Extended fetch options
+ */
 export interface FetchOptions extends Omit<RequestInit, 'method' | 'body'> {
 	method?: HttpMethod;
 	body?: unknown;
 	params?: Record<string, string | number | boolean | undefined>;
 }
 
-// Type definition for API responses (renamed to avoid conflict)
+/**
+ * API response data wrapper
+ */
 export interface ApiResponseData<T = unknown> {
 	data: T;
 	meta?: {
@@ -27,7 +40,9 @@ export interface ApiResponseData<T = unknown> {
 	};
 }
 
-// SQL Query Request type
+/**
+ * SQL Query Request type
+ */
 export interface SQLQueryRequest {
 	query: string;
 	params?: any[];
@@ -49,7 +64,10 @@ export class ApiError extends Error {
 	}
 }
 
-// Response type from the upload endpoint
+// ===== Specific API Response Types =====
+/**
+ * Response type from the upload endpoint
+ */
 export interface UploadResponse {
 	log_file_id: string;
 	records_imported: number;
@@ -57,7 +75,9 @@ export interface UploadResponse {
 	file_size_mb: number;
 }
 
-// Task status response type
+/**
+ * Task status response type
+ */
 export interface TaskStatusResponse {
 	status: string;
 	records_imported: number;
@@ -68,9 +88,11 @@ export interface TaskStatusResponse {
 	message?: string;
 }
 
-// Default React 19 compatible query options
-// Updated for static log files that never change once loaded
-// Added refetch behavior controls to prevent hydration mismatches
+// ===== Query Configuration =====
+/**
+ * Default React 19 compatible query options
+ * Optimized for static log files that never change once loaded
+ */
 export const defaultQueryOptions = {
 	gcTime: 24 * 60 * 60 * 1000, // 24 hours garbage collection time
 	staleTime: Infinity, // Never consider data stale since log files don't change

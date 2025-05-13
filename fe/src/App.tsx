@@ -1,9 +1,10 @@
-import React, { createContext, useEffect, useState, Suspense } from 'react';
+import React, { createContext, useEffect, useState } from 'react';
 import AppRoutes from './routes/AppRoutes';
 import { usePrefetching } from './hooks/usePrefetching';
 import { pythonApiFetch } from './utils/pythonApiClient';
 import CardLoadingSpinner from './components/ui/CardLoadingSpinner';
 
+// ===== Log File Context Management =====
 // Context for the active log file ID
 export const LogFileContext = createContext<string | null>(null);
 
@@ -22,7 +23,10 @@ if (typeof window !== 'undefined') {
     window.__logFileCache = logFileCache;
 }
 
-// Component that prefetches the active log file
+/**
+ * Component that prefetches the active log file
+ * Shows a loading spinner until the log file ID is loaded
+ */
 const LogFileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [logFileId, setLogFileId] = useState<string | null>(logFileCache.id);
     
@@ -76,15 +80,18 @@ const LogFileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
     );
 };
 
+/**
+ * Main application component
+ */
 const App: React.FC = () => {
-	// Monitor for log file changes to invalidate the cache
-	usePrefetching();
+    // Monitor for log file changes to invalidate the cache
+    usePrefetching();
 
-	return (
-		<LogFileProvider>
-			<AppRoutes />
-		</LogFileProvider>
-	);
+    return (
+        <LogFileProvider>
+            <AppRoutes />
+        </LogFileProvider>
+    );
 }
 
 export default App; 

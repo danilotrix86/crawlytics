@@ -1,23 +1,24 @@
 /**
- * Log file change listener hook
+ * Log file change monitor hook
  * 
  * This hook monitors for log file changes and invalidates the query cache
  * to ensure components use the correct data for the newly selected log file.
+ * It uses a combination of context and direct API calls to efficiently
+ * detect changes with minimal network requests.
  */
 import { useEffect, useState, useContext } from 'react';
-import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { LogFileContext } from '../App';
 import { pythonApiFetch } from '../utils/pythonApiClient';
 
-// Cache timeout in milliseconds (30 seconds)
-const POLLING_INTERVAL = 60000; // 30 seconds
+// Polling interval in milliseconds (60 seconds)
+const POLLING_INTERVAL = 60000;
 
 /**
  * Hook to handle log file changes and manage query cache
+ * @returns Object with backwards-compatible empty methods
  */
 export function usePrefetching() {
-    const location = useLocation();
     const queryClient = useQueryClient();
     const currentLogFileId = useContext(LogFileContext);
     const [lastLogFileId, setLastLogFileId] = useState<string | null>(currentLogFileId);
@@ -27,7 +28,7 @@ export function usePrefetching() {
         // Initial setup
         setLastLogFileId(currentLogFileId);
         
-        // Check for log file changes directly from the API much less frequently (every 30 seconds)
+        // Check for log file changes directly from the API much less frequently
         const intervalId = setInterval(async () => {
             try {
                 // Check if the context/window cache has changed first
@@ -66,7 +67,7 @@ export function usePrefetching() {
             } catch (error) {
                 console.error('Error checking for log file changes:', error);
             }
-        }, POLLING_INTERVAL); // Every 30 seconds
+        }, POLLING_INTERVAL);
         
         return () => clearInterval(intervalId);
     }, [queryClient, lastLogFileId, currentLogFileId]);
