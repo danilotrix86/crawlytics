@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react';
+import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -6,7 +6,7 @@ import { HashRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 
-// Create a client optimized for static log file data
+// Create a client optimized for static log file data with deduplication
 const queryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
@@ -48,12 +48,11 @@ createRoot(rootElement, {
 		console.warn('Component stack:', errorInfo);
 	}
 }).render(
-	<StrictMode>
-		<QueryClientProvider client={queryClient}>
-			<HashRouter>
-				<App />
-			</HashRouter>
-			<ReactQueryDevtools initialIsOpen={false} />
-		</QueryClientProvider>
-	</StrictMode>,
+	// Removing StrictMode to prevent double mounting in development
+	<QueryClientProvider client={queryClient}>
+		<HashRouter>
+			<App />
+		</HashRouter>
+		<ReactQueryDevtools initialIsOpen={false} />
+	</QueryClientProvider>
 ); 
