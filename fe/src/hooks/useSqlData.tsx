@@ -68,8 +68,6 @@ export function useSqlData<DataType = any, TransformedType = DataType>(
 				// Check if another component is already rendering this exact query
 				// This provides deduplication during initial renders
 				if (renderingQueries.has(dedupeKey) && renderingQueries.size > 1) {
-					console.info(`Another component is already handling this query, waiting...`);
-					
 					// Wait a tiny bit for the first component's query to start
 					await new Promise(resolve => setTimeout(resolve, 5));
 				}
@@ -78,12 +76,10 @@ export function useSqlData<DataType = any, TransformedType = DataType>(
 				if (queryCache.has(dedupeKey)) {
 					// Reuse the in-flight request
 					const cachedPromise = queryCache.get(dedupeKey);
-					console.info(`Reusing in-flight SQL query: ${dedupeKey.substring(0, 40)}...`);
 					return await cachedPromise as DataType;
 				}
 				
 				// Create a new request promise
-				console.info(`Executing SQL query: ${dedupeKey.substring(0, 40)}...`);
 				const fetchPromise = pythonApiFetch<DataType>('/query_sql', {
 					method: 'POST',
 					body: JSON.stringify({

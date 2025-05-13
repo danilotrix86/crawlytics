@@ -33,9 +33,7 @@ export function usePrefetching() {
             try {
                 // Check if the context/window cache has changed first
                 if (window.__logFileCache?.id !== lastLogFileId && lastLogFileId !== null) {
-                    console.info('Log file changed via UI, invalidating cache...', 
-                      { from: lastLogFileId, to: window.__logFileCache?.id });
-                    
+                    // Invalidate queries and update last ID
                     queryClient.invalidateQueries({ queryKey: ['sql'] });
                     setLastLogFileId(window.__logFileCache?.id || null);
                     return;
@@ -57,9 +55,6 @@ export function usePrefetching() {
                     
                     // Only invalidate if log file has changed
                     if (apiLogFileId !== lastLogFileId && lastLogFileId !== null) {
-                        console.info('Log file changed from server, invalidating cache...', 
-                          { from: lastLogFileId, to: apiLogFileId });
-                        
                         queryClient.invalidateQueries({ queryKey: ['sql'] });
                         setLastLogFileId(apiLogFileId);
                     }

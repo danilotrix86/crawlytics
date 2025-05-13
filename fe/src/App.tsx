@@ -42,7 +42,6 @@ const LogFileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
         pythonApiFetch<{ log_file_id: string | null }>('/active-log-file')
             .then(response => {
                 const newId = response.log_file_id;
-                console.info(`[LogFile] Fetched active log file: ${newId}`);
                 
                 // Update the global cache
                 logFileCache.id = newId;
