@@ -69,9 +69,12 @@ export interface TaskStatusResponse {
 }
 
 // Default React 19 compatible query options
+// Updated for static log files that never change once loaded
 export const defaultQueryOptions = {
-	gcTime: 5 * 60 * 1000, // 5 minutes garbage collection time
-	staleTime: 30 * 1000, // 30 seconds before refetching
+	gcTime: 24 * 60 * 60 * 1000, // 24 hours garbage collection time
+	staleTime: Infinity, // Never consider data stale since log files don't change
 	retry: 1, // Only retry once
-	refetchOnWindowFocus: false // Don't refetch when window gets focus
+	refetchOnWindowFocus: false, // Don't refetch when window gets focus
+	refetchOnMount: false, // Don't refetch on component mount
+	refetchOnReconnect: false // Don't refetch on network reconnection
 } 

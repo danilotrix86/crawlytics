@@ -141,7 +141,8 @@ const useLLMTrafficData = (logFileId: string | null) => {
     }
     
     return useSuspenseQuery<RawTrafficData[], ApiError>({
-        queryKey: ['sql', 'llm-traffic', logFileId],
+        // Include logFileId in query key for proper cache separation
+        queryKey: ['sql', 'llm-traffic', logFileId || 'all'],
         queryFn: async () => {
             return await pythonApiFetch<RawTrafficData[]>('/query_sql', {
                 method: 'POST',
@@ -152,7 +153,12 @@ const useLLMTrafficData = (logFileId: string | null) => {
                 })
             });
         },
-        ...defaultQueryOptions
+        // Override with enhanced options for static data
+        staleTime: Infinity, // Data never goes stale for the same log file
+        gcTime: 24 * 60 * 60 * 1000, // 24 hours garbage collection time
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: false
     });
 };
 
