@@ -4,6 +4,7 @@ import { useLogFileSelection } from '../../hooks/useLogFiles/useLogFileSelection
 import { useLogsFilters, LogEntry } from '../../hooks/tables/useLogsFilters';
 import { useSqlQuery } from '../../hooks/queries/sqlQueries';
 import { getLogFileSuffix, createTitle, DataComponentWrapper } from '../../shared/analytics-utils';
+import { useSqlData } from '../../hooks/useSqlData';
 
 // Import components
 import FilterControls from './components/FilterControls';
@@ -87,7 +88,31 @@ const SimpleLogsTableComponent: React.FC = () => {
     return Array.from(new Set(data.map(item => String(item[key])).filter(Boolean)));
   };
   
-  const crawlerSuggestions = useMemo(() => getUniqueValues(data, 'crawler_name'), [data]);
+  // Fetch all unique crawler names for this log file for the filter dropdown
+  // This query runs once to get ALL crawler names regardless of pagination
+  const allCrawlersQuery = useMemo(() => {
+    return logFileId ? `
+      SELECT DISTINCT crawler_name 
+      FROM access_logs 
+      WHERE log_file_id = ? 
+      AND crawler_name IS NOT NULL 
+      AND crawler_name != ''
+    ` : null;
+  }, [logFileId]);
+  
+  const { data: allCrawlerData } = useSqlData<{crawler_name: string}[]>(
+    allCrawlersQuery || '',
+    logFileId ? [logFileId] : [],
+    undefined,
+    1000 // Get up to 1000 crawler names
+  );
+  
+  // Create suggestions list from ALL crawlers, not just those on the current page
+  const crawlerSuggestions = useMemo(() => 
+    allCrawlerData ? Array.from(new Set(allCrawlerData.map(item => item.crawler_name))) : []
+  , [allCrawlerData]);
+  
+  // Path suggestions still come from current page data
   const pathSuggestions = useMemo(() => getUniqueValues(data, 'path'), [data]);
 
   // State for global search

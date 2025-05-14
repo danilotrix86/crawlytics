@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { usePaginatedSqlQuery } from '../../hooks/queries/paginatedQueries';
 import { BaseTableUI } from './BaseTableUI';
 import { getCookie } from '../../utils/cookies';
@@ -14,6 +14,8 @@ import {
   formatTableDate,
   createTableTitle
 } from '../../shared/table-utils';
+import { useSqlData } from '../../hooks/useSqlData';
+import AutocompleteInput from '../tables/components/AutocompleteInput';
 
 // Define log entry interface based on database schema
 interface LogEntry {
@@ -120,6 +122,30 @@ const LogsTableComponent: React.FC = () => {
     TABLE_CONSTANTS.DEFAULT_PAGE_SIZE
   );
 
+  // Fetch all unique crawler names for filtering - independent of pagination
+  const allCrawlersQuery = useMemo(() => {
+    if (!logFileId) return null;
+    return `
+      SELECT DISTINCT crawler_name 
+      FROM access_logs 
+      WHERE log_file_id = ? 
+      AND crawler_name IS NOT NULL 
+      AND crawler_name != ''
+    `;
+  }, [logFileId]);
+  
+  const { data: allCrawlerData } = useSqlData<{crawler_name: string}[]>(
+    allCrawlersQuery || '',
+    logFileId ? [logFileId] : [],
+    undefined,
+    1000 // Get up to 1000 crawler names
+  );
+  
+  // Get all crawler names for filtering
+  const crawlerSuggestions = useMemo(() => 
+    allCrawlerData ? Array.from(new Set(allCrawlerData.map(item => item.crawler_name))) : []
+  , [allCrawlerData]);
+
   // Delayed table rendering to ensure DOM is ready
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -212,12 +238,11 @@ const LogsTableComponent: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Crawler
               </label>
-              <input
-                type="text"
-                className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white"
-                placeholder="Filter by crawler"
+              <AutocompleteInput
                 value={filters.crawler || ''}
-                onChange={(e) => handleFilterChange('crawler', e.target.value)}
+                onChange={(value) => handleFilterChange('crawler', value)}
+                suggestions={crawlerSuggestions}
+                placeholder="Filter by crawler"
               />
             </div>
             <div>
