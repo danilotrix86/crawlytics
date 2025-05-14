@@ -106,24 +106,56 @@ export const useLogsFilters = (logFileId: string | null) => {
         let values = orParts.map(s => s.match(/(GET|POST|PUT|DELETE|HEAD)/i)).flat().filter(Boolean).map(v => v?.toUpperCase());
         if (values.length) filters.method = values as string[];
       }
-      // Path
+      // Path - Fix to handle OR conditions for paths
       else if (/^path/i.test(part)) {
-        // path contains ...
-        let match = part.match(/contains\s+([^\s]+)/i);
-        if (match) filters.path = match[1];
-        else {
-          // path = ...
-          let eq = part.match(/=\s*([^\s]+)/i);
-          if (eq) filters.path = eq[1];
+        // Handle multiple path conditions connected by OR
+        const pathFilters: string[] = [];
+        
+        for (const orPart of orParts) {
+          // path contains ...
+          let containsMatch = orPart.match(/contains\s+([^\s]+)/i);
+          if (containsMatch) {
+            pathFilters.push(containsMatch[1]);
+          } else {
+            // path = ...
+            let eqMatch = orPart.match(/=\s*([^\s]+)/i);
+            if (eqMatch) {
+              pathFilters.push(eqMatch[1]);
+            }
+          }
+        }
+        
+        if (pathFilters.length === 1) {
+          // Single path filter, behave as before
+          filters.path = pathFilters[0];
+        } else if (pathFilters.length > 1) {
+          // Multiple path filters, join with | for SQL OR using REGEXP
+          filters.path = `(${pathFilters.join('|')})`;
         }
       }
       // Crawler
       else if (/^crawler/i.test(part)) {
-        let match = part.match(/=\s*([^\s]+)/i);
-        if (match) filters.crawler = match[1];
-        else {
-          let match2 = part.match(/contains\s+([^\s]+)/i);
-          if (match2) filters.crawler = match2[1];
+        // Handle multiple crawler conditions connected by OR
+        const crawlerFilters: string[] = [];
+        
+        for (const orPart of orParts) {
+          let eqMatch = orPart.match(/=\s*([^\s]+)/i);
+          if (eqMatch) {
+            crawlerFilters.push(eqMatch[1]);
+          } else {
+            let containsMatch = orPart.match(/contains\s+([^\s]+)/i);
+            if (containsMatch) {
+              crawlerFilters.push(containsMatch[1]);
+            }
+          }
+        }
+        
+        if (crawlerFilters.length === 1) {
+          // Single crawler filter, behave as before
+          filters.crawler = crawlerFilters[0];
+        } else if (crawlerFilters.length > 1) {
+          // Multiple crawler filters, join with | for SQL OR using REGEXP
+          filters.crawler = `(${crawlerFilters.join('|')})`;
         }
       }
       // Date
@@ -171,14 +203,48 @@ export const useLogsFilters = (logFileId: string | null) => {
     
     // Autocomplete for crawler
     if (filters.crawler) {
-      query += ' AND crawler_name LIKE ?';
-      queryParams.push(`%${filters.crawler}%`);
+      // Check if this is a multi-crawler OR condition
+      if (filters.crawler.startsWith('(') && filters.crawler.endsWith(')')) {
+        // Extract the crawlers from the format (crawler1|crawler2|crawler3)
+        const crawlersString = filters.crawler.substring(1, filters.crawler.length - 1);
+        const crawlers = crawlersString.split('|');
+        
+        // Build an OR condition for each crawler
+        const crawlerConditions = crawlers.map(() => 'crawler_name LIKE ?').join(' OR ');
+        query += ` AND (${crawlerConditions})`;
+        
+        // Add each crawler as a parameter with % wildcards
+        crawlers.forEach(crawler => {
+          queryParams.push(`%${crawler}%`);
+        });
+      } else {
+        // Single crawler, use simple LIKE
+        query += ' AND crawler_name LIKE ?';
+        queryParams.push(`%${filters.crawler}%`);
+      }
     }
     
-    // Autocomplete for path
+    // Path filtering - updated to handle OR conditions
     if (filters.path) {
-      query += ' AND path LIKE ?';
-      queryParams.push(`%${filters.path}%`);
+      // Check if this is a multi-path OR condition 
+      if (filters.path.startsWith('(') && filters.path.endsWith(')')) {
+        // Extract the paths from the format (path1|path2|path3)
+        const pathsString = filters.path.substring(1, filters.path.length - 1);
+        const paths = pathsString.split('|');
+        
+        // Build an OR condition for each path
+        const pathConditions = paths.map(() => 'path LIKE ?').join(' OR ');
+        query += ` AND (${pathConditions})`;
+        
+        // Add each path as a parameter with % wildcards
+        paths.forEach(path => {
+          queryParams.push(`%${path}%`);
+        });
+      } else {
+        // Single path, use simple LIKE
+        query += ' AND path LIKE ?';
+        queryParams.push(`%${filters.path}%`);
+      }
     }
     
     // Date range

@@ -8,10 +8,10 @@ const AdvancedSearchTips: React.FC = () => {
         <li><b>AND</b>, <b>OR</b> for combining conditions</li>
         <li><b>status=404 OR 500</b> (multiple status codes)</li>
         <li><b>method=GET OR POST</b> (multiple HTTP methods)</li>
-        <li><b>path contains /api</b> or <b>path=/home</b></li>
-        <li><b>crawler=Googlebot</b> or <b>crawler contains bot</b></li>
+        <li><b>path contains /api OR path=/home OR path contains /blog</b> (multiple paths)</li>
+        <li><b>crawler=Googlebot OR crawler contains bot</b> (multiple crawlers)</li>
         <li><b>date=YYYY-MM-DD</b> or <b>date=YYYY-MM-DD:YYYY-MM-DD</b> (range)</li>
-        <li>Example: <span className="font-mono">status=404 OR 500 AND path contains /api AND method=POST</span></li>
+        <li>Example: <span className="font-mono">status=404 OR 500 AND path contains /api OR path=/home AND method=POST</span></li>
       </ul>
     </div>
   );
