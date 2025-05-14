@@ -27,7 +27,7 @@ const UniqueLLMsCardComponent: React.FC = () => {
 	const statsCardProps = {
 		data: {
 			title: "🧠 Unique LLM Crawlers",
-			subtext: logFileId ? "Selected Log File" : "All Log Files",
+			subtext: "Distinct LLM crawlers detected",
 			number: uniqueLLMData?.count?.toString() ?? "0",
 		},
 		icon: Chart,

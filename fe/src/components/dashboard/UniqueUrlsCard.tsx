@@ -39,7 +39,7 @@ const UniqueUrlsCardComponent: React.FC = () => {
 	const statsCardProps = {
 		data: {
 			title: "🔗 Unique URLs Requested",
-			subtext: logFileId ? "Selected Log File" : "All Log Files",
+			subtext: "Distinct URLs requested by crawlers",
 			number: uniqueUrlData?.count?.toString() ?? "0",
 		},
 		icon: Link,

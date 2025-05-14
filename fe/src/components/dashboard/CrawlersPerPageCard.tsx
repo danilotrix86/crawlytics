@@ -1,6 +1,6 @@
 import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
-import { Link } from 'flowbite-react-icons/outline';
+import { Bug } from 'flowbite-react-icons/outline';
 import { 
   useLogFileData, 
   DataComponentWrapper, 
@@ -54,7 +54,7 @@ const CrawlersPerPageCardComponent: React.FC = () => {
       number: formattedAvg,
       subtext: `Across ${totalPages} unique pages${getLogFileSuffix(logFileId)}`,
     },
-    icon: Link,
+    icon: Bug,
   };
 
   return <StatsCard {...statsCardProps} />;

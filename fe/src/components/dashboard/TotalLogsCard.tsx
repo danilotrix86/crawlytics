@@ -27,7 +27,7 @@ const TotalLogsCardComponent: React.FC = () => {
 	const statsCardProps = {
 		data: {
 			title: "📋 Total Log Entries",
-			subtext: logFileId ? "Selected Log File" : "All Log Files",
+			subtext: "All log entries in database",
 			number: logCountData?.count?.toString() ?? "0",
 		},
 		icon: List,
