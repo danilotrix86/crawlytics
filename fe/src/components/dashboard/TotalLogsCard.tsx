@@ -1,37 +1,25 @@
-import React, { Suspense } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
 import { List } from 'flowbite-react-icons/outline';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
-import { useSqlData } from '../../hooks/useSqlData';
-import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import { 
+	useLogFileData, 
+	DataComponentWrapper 
+} from '../../shared/analytics-utils';
 
 // Define the expected data shape from the query
 interface LogCount {
 	count: number;
 }
 
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
-
 // Refactored component using hooks
 const TotalLogsCardComponent: React.FC = () => {
-	const logFileId = getCookie(COOKIE_NAME);
-	let sqlQuery = "SELECT COUNT(*) as count FROM access_logs";
-	let params: any[] = [];
+	// Base SQL query with placeholder for log file condition
+	const sqlQuery = "SELECT COUNT(*) as count FROM access_logs WHERE 1=1 {LOG_FILE_CONDITION}";
 	
-	// Only filter by log_file_id if a file is selected
-	if (logFileId) {
-		sqlQuery += " WHERE log_file_id = ?";
-		params = [logFileId];
-	}
-
-	// Fetch data using the hook
-	const { data: logCountData } = useSqlData<LogCount[], LogCount>(
+	// Use our custom hook for data fetching with automatic log file handling
+	const { data: logCountData, logFileId } = useLogFileData<LogCount[], LogCount>(
 		sqlQuery,
-		params,
+		[],
 		(data) => data?.[0] // Transformer: get the first item from the array
 	);
 
@@ -48,15 +36,9 @@ const TotalLogsCardComponent: React.FC = () => {
 	return <StatsCard {...statsCardProps} />;
 };
 
-// Component with Suspense and Error Boundary
-export const TotalLogsCard: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<TotalLogsCardComponent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-}; 
+// Component with DataComponentWrapper
+export const TotalLogsCard: React.FC = () => (
+	<DataComponentWrapper>
+		<TotalLogsCardComponent />
+	</DataComponentWrapper>
+); 

@@ -3,6 +3,7 @@ import { usePaginatedSqlQuery } from '../../hooks/queries/paginatedQueries';
 import { useLogFileSelection } from '../../hooks/useLogFiles/useLogFileSelection';
 import { useLogsFilters, LogEntry } from '../../hooks/tables/useLogsFilters';
 import { useSqlQuery } from '../../hooks/queries/sqlQueries';
+import { getLogFileSuffix, createTitle, DataComponentWrapper } from '../../shared/analytics-utils';
 
 // Import components
 import FilterControls from './components/FilterControls';
@@ -13,11 +14,10 @@ import GlobalSearchBox from './components/GlobalSearchBox';
 import GroupByAnalytics from './components/GroupByAnalytics';
 import PageSizeSelector from './components/PageSizeSelector';
 
-
 // Constants
 const PAGE_SIZE = 25;
 
-export const SimpleLogsTable: React.FC = () => {
+const SimpleLogsTableComponent: React.FC = () => {
   // Get log file ID from the hook
   const { selectedLogId: logFileId } = useLogFileSelection();
 
@@ -127,7 +127,12 @@ export const SimpleLogsTable: React.FC = () => {
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-md">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Access Logs</h2>
+        <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
+          Access Logs
+          <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">
+            {getLogFileSuffix(logFileId)}
+          </span>
+        </h2>
         <ColumnVisibilityToggle 
           visibleColumns={visibleColumns} 
           onColumnToggle={handleColToggle} 
@@ -214,6 +219,15 @@ export const SimpleLogsTable: React.FC = () => {
         <PageSizeSelector pageSize={pageSize} onPageSizeChange={setPageSize} options={[25, 50, 100]} />
       </PaginationControls>
     </div>
+  );
+};
+
+// Use the shared DataComponentWrapper
+export const SimpleLogsTable: React.FC = () => {
+  return (
+    <DataComponentWrapper>
+      <SimpleLogsTableComponent />
+    </DataComponentWrapper>
   );
 };
 

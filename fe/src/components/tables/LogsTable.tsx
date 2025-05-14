@@ -1,11 +1,19 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
 import { usePaginatedSqlQuery } from '../../hooks/queries/paginatedQueries';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
 import { BaseTableUI } from './BaseTableUI';
 import { getCookie } from '../../utils/cookies';
 import useTableUtils from './useTableUtils';
+import { 
+  SELECTED_LOG_FILE_COOKIE, 
+  prepareSqlQuery, 
+  DataComponentWrapper 
+} from '../../shared/analytics-utils';
+import {
+  EMPTY_ARRAY,
+  TABLE_CONSTANTS,
+  formatTableDate,
+  createTableTitle
+} from '../../shared/table-utils';
 
 // Define log entry interface based on database schema
 interface LogEntry {
@@ -32,12 +40,8 @@ interface LogFilters {
   path?: string;
 }
 
-// Constants
-const COOKIE_NAME = 'selected_log_file';
-const PAGE_SIZE = 25;
-
 // Default empty data fallback
-const EMPTY_DATA: LogEntry[] = [];
+const EMPTY_DATA: LogEntry[] = EMPTY_ARRAY;
 
 const LogsTableComponent: React.FC = () => {
   // State for pagination
@@ -52,7 +56,7 @@ const LogsTableComponent: React.FC = () => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
 
   // Get log file ID from cookie
-  const logFileId = getCookie(COOKIE_NAME);
+  const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE);
 
   // Table utilities
   const { createTextColumn, createCustomColumn } = useTableUtils();
@@ -62,10 +66,11 @@ const LogsTableComponent: React.FC = () => {
     let query = `
       SELECT *
       FROM access_logs
-      WHERE log_file_id = ?
+      WHERE 1=1
+      {LOG_FILE_CONDITION}
     `;
     
-    const queryParams: any[] = [logFileId];
+    const queryParams: any[] = [];
     
     // Add filter conditions
     if (filters.crawler) {
@@ -100,7 +105,8 @@ const LogsTableComponent: React.FC = () => {
     
     query += " ORDER BY time DESC";
     
-    return { query, params: queryParams };
+    // Prepare query with log file condition
+    return prepareSqlQuery({ sqlQuery: query, params: queryParams });
   };
 
   // Create query and params
@@ -111,7 +117,7 @@ const LogsTableComponent: React.FC = () => {
     logFileId ? query : null, // Only run query if we have a logFileId
     params,
     page,
-    PAGE_SIZE
+    TABLE_CONSTANTS.DEFAULT_PAGE_SIZE
   );
 
   // Delayed table rendering to ensure DOM is ready
@@ -128,7 +134,7 @@ const LogsTableComponent: React.FC = () => {
     createCustomColumn<LogEntry>(
       'time', 
       'Timestamp',
-      (item) => item && item.time ? new Date(item.time).toLocaleString() : 'Invalid Date'
+      (item) => item && item.time ? formatTableDate(item.time) : 'Invalid Date'
     ),
     createTextColumn<LogEntry>('ip_address', 'IP Address'),
     createTextColumn<LogEntry>('method', 'Method'),
@@ -186,12 +192,7 @@ const LogsTableComponent: React.FC = () => {
   return (
     <div className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 overflow-hidden shadow-md">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Access Logs</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Viewing log entries for selected file
-          </p>
-        </div>
+        {createTableTitle('Access Logs', 'Viewing log entries for selected file')}
         <button
           className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 flex items-center gap-1 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
           onClick={() => setShowFilters(!showFilters)}
@@ -199,7 +200,7 @@ const LogsTableComponent: React.FC = () => {
           <svg className="w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
-          <span>Filters</span>
+          <span>Filter</span>
         </button>
       </div>
 
@@ -329,7 +330,7 @@ const LogsTableComponent: React.FC = () => {
       {/* Pagination */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <div className="text-sm text-gray-700 dark:text-gray-300">
-          Showing {data.length ? page * PAGE_SIZE + 1 : 0} to {page * PAGE_SIZE + data.length} entries
+          Showing {data.length ? page * TABLE_CONSTANTS.DEFAULT_PAGE_SIZE + 1 : 0} to {page * TABLE_CONSTANTS.DEFAULT_PAGE_SIZE + data.length} entries
         </div>
         <div className="flex gap-2">
           <button
@@ -342,7 +343,7 @@ const LogsTableComponent: React.FC = () => {
           <button
             className="px-3 py-1 bg-gray-100 dark:bg-gray-700 rounded-lg text-gray-700 dark:text-gray-300 disabled:opacity-50"
             onClick={() => handlePageChange(page + 1)}
-            disabled={data.length < PAGE_SIZE}
+            disabled={data.length < TABLE_CONSTANTS.DEFAULT_PAGE_SIZE}
           >
             Next
           </button>
@@ -352,13 +353,12 @@ const LogsTableComponent: React.FC = () => {
   );
 };
 
+// Use the shared DataComponentWrapper
 export const LogsTable: React.FC = () => {
-  const { reset } = useQueryErrorResetBoundary();
-
   return (
-    <ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
+    <DataComponentWrapper>
       <LogsTableComponent />
-    </ErrorBoundary>
+    </DataComponentWrapper>
   );
 };
 

@@ -1,17 +1,13 @@
-import React, { Suspense, useMemo } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { useSqlData } from '../../hooks/useSqlData';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
-import { getCookie } from '../../utils/cookies';
+import React, { useMemo } from 'react';
+import { 
+    useLogFileData, 
+    DataComponentWrapper,
+    createTitle
+} from '../../shared/analytics-utils';
 import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 
-// Constants
-const SELECTED_LOG_FILE_COOKIE = 'selected_log_file';
-
-// SQL Query for daily crawler activity with placeholder for log_file_id condition
+// SQL Query for daily crawler activity with placeholder
 const DAILY_CRAWLER_ACTIVITY_SQL = `
     SELECT 
         date(time) as date,
@@ -104,24 +100,10 @@ const transformCrawlerData = (data: CrawlerDataPoint[]) => {
 
 // Content component
 const DailyCrawlerActivityContent: React.FC = () => {
-    // Get selected log file from cookie
-    const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE) || '';
-    
-    // Prepare SQL query based on log file selection
-    let sqlQuery = DAILY_CRAWLER_ACTIVITY_SQL;
-    let params: any[] = [];
-    
-    if (logFileId) {
-        sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
-        params = [logFileId];
-    } else {
-        sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
-    }
-    
-    // Fetch data
-    const { data } = useSqlData<CrawlerDataPoint[]>(
-        sqlQuery,
-        params
+    // Use our custom hook for data fetching
+    const { data, logFileId } = useLogFileData<CrawlerDataPoint[]>(
+        DAILY_CRAWLER_ACTIVITY_SQL,
+        []
     );
     
     // Safe data handling
@@ -144,7 +126,7 @@ const DailyCrawlerActivityContent: React.FC = () => {
             stacked: false
         },
         title: {
-            text: `🕸️ Top 7 Crawler Activity${logFileId ? "" : " - All Log Files"}`,
+            text: createTitle('🕸️ Top 7 Crawler Activity', logFileId),
             align: 'left'
         },
         xaxis: {
@@ -194,20 +176,11 @@ const DailyCrawlerActivityContent: React.FC = () => {
     );
 };
 
-// Main exported component with error boundary and suspense
-export const DailyCrawlerActivityChart: React.FC = () => {
-    const { reset } = useQueryErrorResetBoundary();
-
-    return (
-        <ErrorBoundary 
-            onReset={reset} 
-            FallbackComponent={DefaultQueryErrorFallback}
-        >
-            <Suspense fallback={<CardLoadingSpinner />}>
-                <DailyCrawlerActivityContent />
-            </Suspense>
-        </ErrorBoundary>
-    );
-};
+// Main exported component
+export const DailyCrawlerActivityChart: React.FC = () => (
+    <DataComponentWrapper>
+        <DailyCrawlerActivityContent />
+    </DataComponentWrapper>
+);
 
 export default DailyCrawlerActivityChart; 

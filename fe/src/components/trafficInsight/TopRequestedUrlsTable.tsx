@@ -1,10 +1,11 @@
-import React, { Suspense, useState, useMemo } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React, { useState, useMemo } from 'react';
 import { useSqlData } from '../../hooks/useSqlData';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
+import { 
+	DataComponentWrapper, 
+	getLogFileSuffix, 
+	SELECTED_LOG_FILE_COOKIE 
+} from '../../shared/analytics-utils';
 import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
 
 // Define the expected data shape
 interface UrlData {
@@ -13,35 +14,6 @@ interface UrlData {
 	unique_ips: number;
 	percentage: number;
 }
-
-// SQL Query for Top Requested URLs
-const TOP_URLS_QUERY = `
-  SELECT 
-    CASE 
-      WHEN path = '/' THEN '/'
-      WHEN instr(path, '?') > 0 
-      THEN substr(path, 1, instr(path, '?') - 1) 
-      WHEN instr(path, '#') > 0
-      THEN substr(path, 1, instr(path, '#') - 1)
-      ELSE path 
-    END AS page_path,
-    COUNT(*) as hits,
-    COUNT(DISTINCT ip_address) as unique_ips,
-    CAST((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM access_logs {TOTAL_CONDITION})) AS REAL) as percentage
-  FROM 
-    access_logs
-  WHERE 
-    1=1 {LOG_FILE_CONDITION}
-  GROUP BY 
-    page_path
-  ORDER BY 
-    hits DESC
-  LIMIT 
-    20
-`;
-
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
 
 type SortColumn = keyof UrlData;
 type SortDirection = 'asc' | 'desc';
@@ -225,20 +197,52 @@ const CustomTable: React.FC<{ data: UrlData[] }> = ({ data }) => {
 
 // Inner component for logic
 const TopRequestedUrlsTableComponent: React.FC = () => {
-	const logFileId = getCookie(COOKIE_NAME);
+	const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE);
 	
-	// Prepare SQL query based on log file selection
-	let sqlQuery = TOP_URLS_QUERY;
+	// Build the query with explicit conditions
+	let sqlQuery = `
+  SELECT 
+    CASE 
+      WHEN path = '/' THEN '/'
+      WHEN instr(path, '?') > 0 
+      THEN substr(path, 1, instr(path, '?') - 1) 
+      WHEN instr(path, '#') > 0
+      THEN substr(path, 1, instr(path, '#') - 1)
+      ELSE path 
+    END AS page_path,
+    COUNT(*) as hits,
+    COUNT(DISTINCT ip_address) as unique_ips,
+    CAST((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM access_logs`;
+  
+	// Add parameters for log file filtering
 	let params: any[] = [];
 	
+	// Add the condition to the subquery if needed
 	if (logFileId) {
-		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
-		sqlQuery = sqlQuery.replace("{TOTAL_CONDITION}", "WHERE log_file_id = ?");
-		params = [logFileId, logFileId];
-	} else {
-		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
-		sqlQuery = sqlQuery.replace("{TOTAL_CONDITION}", "");
+		sqlQuery += ` WHERE log_file_id = ?`;
+		params.push(logFileId);
 	}
+	
+	sqlQuery += `)) AS REAL) as percentage
+  FROM 
+    access_logs
+  WHERE 
+    1=1`;
+  
+	// Add the same condition to the main query
+	if (logFileId) {
+		sqlQuery += ` AND log_file_id = ?`;
+		params.push(logFileId);
+	}
+	
+	sqlQuery += `
+  GROUP BY 
+    page_path
+  ORDER BY 
+    hits DESC
+  LIMIT 
+    20
+`;
 
 	// Fetch data using the hook
 	const { data: rawData } = useSqlData<UrlData[], UrlData[]>(
@@ -261,17 +265,11 @@ const TopRequestedUrlsTableComponent: React.FC = () => {
 	);
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const TopRequestedUrlsTable: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<TopRequestedUrlsTableComponent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-};
+// Exported component with DataComponentWrapper
+export const TopRequestedUrlsTable: React.FC = () => (
+	<DataComponentWrapper>
+		<TopRequestedUrlsTableComponent />
+	</DataComponentWrapper>
+);
 
 export default TopRequestedUrlsTable; 

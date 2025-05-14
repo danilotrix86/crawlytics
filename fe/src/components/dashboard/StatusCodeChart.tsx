@@ -1,20 +1,16 @@
-import React, { Suspense, useMemo } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { useSqlData } from '../../hooks/useSqlData';
+import React, { useMemo } from 'react';
 import { ColumnBarChartUI } from '../charts/ColumnBarChartUI';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
 import { 
 	RawStatusCodeData, 
 	transformStatusCodeData, 
 	ColumnChartConfig 
 } from '../charts/ColumnChartTransformer';
-import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import {
+	useLogFileData,
+	DataComponentWrapper,
+	createTitle
+} from '../../shared/analytics-utils';
 import { COLOR_MAPS } from '../../theme/chartTheme';
-
-// Constants
-const SELECTED_LOG_FILE_COOKIE = 'selected_log_file';
 
 // Status code configuration - will be modified at runtime based on log file selection
 const getStatusCodeConfig = (logFileId: string | null): Partial<ColumnChartConfig> => {
@@ -27,7 +23,7 @@ const getStatusCodeConfig = (logFileId: string | null): Partial<ColumnChartConfi
 			'Other'
 		],
 		colorMap: COLOR_MAPS.statusCodes,
-		title: `📊 Status Code Distribution${logFileId ? "" : " - All Log Files"}`,
+		title: createTitle('📊 Status Code Distribution', logFileId),
 		seriesName: 'Requests',
 		xAxisTitle: 'Status Code Group',
 		yAxisTitle: 'Request Count',
@@ -50,7 +46,7 @@ const STATUS_CODE_SQL_QUERY = `
             COUNT(*) as count
         FROM 
             access_logs
-        {WHERE_CLAUSE}
+        WHERE 1=1 {LOG_FILE_CONDITION}
         GROUP BY 
             CASE 
                 WHEN status >= 200 AND status < 300 THEN '2xx Success'
@@ -74,28 +70,14 @@ const STATUS_CODE_SQL_QUERY = `
 
 // Inner component that handles data fetching and transformation
 const StatusCodeChartContent: React.FC = () => {
-	// Get selected log file from cookie with safe fallback
-	const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE) || '';
-	
-	// Prepare SQL query based on log file selection
-	let sqlQuery = STATUS_CODE_SQL_QUERY;
-	let params: any[] = [];
-	
-	if (logFileId) {
-		sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "WHERE log_file_id = ?");
-		params = [logFileId];
-	} else {
-		sqlQuery = sqlQuery.replace("{WHERE_CLAUSE}", "");
-	}
+	// Use our custom hook for data fetching
+	const { data, logFileId } = useLogFileData<RawStatusCodeData[]>(
+		STATUS_CODE_SQL_QUERY,
+		[]
+	);
 	
 	// Get the dynamic config based on log file selection
 	const STATUS_CODE_CONFIG = getStatusCodeConfig(logFileId);
-	
-	// Fetch SQL data with proper typing
-	const { data } = useSqlData<RawStatusCodeData[]>(
-		sqlQuery,
-		params
-	);
 	
 	// Convert data to safe array with type checking
 	const safeData = Array.isArray(data) ? data : [];
@@ -114,20 +96,11 @@ const StatusCodeChartContent: React.FC = () => {
 	);
 };
 
-// Main exported component with error boundary and suspense
-export const StatusCodeChart: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary 
-			onReset={reset} 
-			FallbackComponent={DefaultQueryErrorFallback}
-		>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<StatusCodeChartContent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-};
+// Main exported component with DataComponentWrapper
+export const StatusCodeChart: React.FC = () => (
+	<DataComponentWrapper>
+		<StatusCodeChartContent />
+	</DataComponentWrapper>
+);
 
 export default StatusCodeChart; 

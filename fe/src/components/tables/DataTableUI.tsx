@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import BaseTableUI, { BaseTableUIProps } from './BaseTableUI';
 import useTableUtils from './useTableUtils';
+import { DataComponentWrapper } from '../../shared/analytics-utils';
 
 // Define props for the data table component
 export interface DataTableUIProps<T extends object = any> 
@@ -8,6 +9,7 @@ export interface DataTableUIProps<T extends object = any>
   initialSortColumn?: keyof T;
   initialSortDirection?: 'asc' | 'desc';
   enableClientSideSorting?: boolean;
+  withErrorBoundary?: boolean;
 }
 
 // Memoized component for better performance
@@ -17,6 +19,7 @@ export const DataTableUI = React.memo(function DataTableUI<T extends object>({
   initialSortColumn,
   initialSortDirection = 'asc',
   enableClientSideSorting = true,
+  withErrorBoundary = false,
   testId = 'data-table',
   ...restProps
 }: DataTableUIProps<T>): React.ReactElement {
@@ -80,7 +83,7 @@ export const DataTableUI = React.memo(function DataTableUI<T extends object>({
     setSortedData(sortedItems);
   }, [data, enableClientSideSorting, hasTableData]);
   
-  return (
+  const tableComponent = (
     <BaseTableUI
       data={enableClientSideSorting ? sortedData : data}
       columns={columns}
@@ -90,6 +93,13 @@ export const DataTableUI = React.memo(function DataTableUI<T extends object>({
       {...restProps}
     />
   );
+  
+  // Use DataComponentWrapper if requested
+  if (withErrorBoundary) {
+    return <DataComponentWrapper>{tableComponent}</DataComponentWrapper>;
+  }
+  
+  return tableComponent;
 });
 
 // Set display name for debugging

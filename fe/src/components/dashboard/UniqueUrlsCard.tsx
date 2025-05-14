@@ -1,25 +1,20 @@
-import React, { Suspense } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
 import { Link } from 'flowbite-react-icons/outline';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
-import { useSqlData } from '../../hooks/useSqlData';
-import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import { 
+	useLogFileData, 
+	DataComponentWrapper 
+} from '../../shared/analytics-utils';
 
 // Define the expected data shape
 interface UniqueUrlCount {
 	count: number;
 }
 
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
-
 // Inner component for logic
 const UniqueUrlsCardComponent: React.FC = () => {
-	const logFileId = getCookie(COOKIE_NAME);
-	let sqlQuery = `
+	// Base SQL query with placeholder for log file condition
+	const sqlQuery = `
 		SELECT COUNT(DISTINCT 
 			CASE 
 				WHEN path = '/' THEN '/'
@@ -31,19 +26,13 @@ const UniqueUrlsCardComponent: React.FC = () => {
 			END
 		) as count 
 		FROM access_logs 
-		WHERE 1=1
+		WHERE 1=1 {LOG_FILE_CONDITION}
 	`;
-	let params: any[] = [];
 	
-	// Only filter by log_file_id if a file is selected
-	if (logFileId) {
-		sqlQuery = sqlQuery.replace("WHERE", "WHERE log_file_id = ? AND");
-		params = [logFileId];
-	}
-
-	const { data: uniqueUrlData } = useSqlData<UniqueUrlCount[], UniqueUrlCount>(
+	// Use our custom hook for data fetching with automatic log file handling
+	const { data: uniqueUrlData, logFileId } = useLogFileData<UniqueUrlCount[], UniqueUrlCount>(
 		sqlQuery,
-		params,
+		[],
 		(data) => data?.[0]
 	);
 
@@ -59,15 +48,9 @@ const UniqueUrlsCardComponent: React.FC = () => {
 	return <StatsCard {...statsCardProps} />;
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const UniqueUrlsCard: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<UniqueUrlsCardComponent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-}; 
+// Exported component with DataComponentWrapper
+export const UniqueUrlsCard: React.FC = () => (
+	<DataComponentWrapper>
+		<UniqueUrlsCardComponent />
+	</DataComponentWrapper>
+); 

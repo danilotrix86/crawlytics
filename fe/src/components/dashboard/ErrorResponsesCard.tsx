@@ -1,12 +1,11 @@
-import React, { Suspense } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
 import { ExclamationCircle } from 'flowbite-react-icons/solid';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
-import { useSqlData } from '../../hooks/useSqlData';
-import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import { 
+	useLogFileData, 
+	DataComponentWrapper,
+	getLogFileSuffix
+} from '../../shared/analytics-utils';
 
 // Define the expected data shape
 interface ErrorRateData {
@@ -15,30 +14,22 @@ interface ErrorRateData {
 	total_requests: number;
 }
 
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
-
 // Inner component for logic
 const ErrorResponsesCardComponent: React.FC = () => {
-	const logFileId = getCookie(COOKIE_NAME);
-	let sqlQuery = `
+	// Base SQL query with WHERE 1=1 to safely add conditions
+	const sqlQuery = `
 		SELECT 
 			COUNT(CASE WHEN status >= 400 AND status < 500 THEN 1 ELSE NULL END) as client_errors,
 			COUNT(CASE WHEN status >= 500 THEN 1 ELSE NULL END) as server_errors,
 			COUNT(*) as total_requests
 		FROM access_logs 
+		WHERE 1=1 {LOG_FILE_CONDITION}
 	`;
-	let params: any[] = [];
-	
-	// Only filter by log_file_id if a file is selected
-	if (logFileId) {
-		sqlQuery += `WHERE log_file_id = ?`;
-		params = [logFileId];
-	}
 
-	const { data: errorData } = useSqlData<ErrorRateData[], ErrorRateData>(
+	// Use our custom hook instead of manually building the query
+	const { data: errorData, logFileId } = useLogFileData<ErrorRateData[], ErrorRateData>(
 		sqlQuery,
-		params,
+		[],
 		(data) => data?.[0]
 	);
 
@@ -56,7 +47,7 @@ const ErrorResponsesCardComponent: React.FC = () => {
 		data: {
 			title: "⚠️ Error Rate",
 			number: `${errorRate}%`,
-			subtext: `${totalErrors} errors (${clientErrors} client / ${serverErrors} server)${logFileId ? "" : " - All Log Files"}`,
+			subtext: `${totalErrors} errors (${clientErrors} client / ${serverErrors} server)${getLogFileSuffix(logFileId)}`,
 		},
 		icon: ExclamationCircle,
 	};
@@ -64,15 +55,9 @@ const ErrorResponsesCardComponent: React.FC = () => {
 	return <StatsCard {...statsCardProps} />;
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const ErrorResponsesCard: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<ErrorResponsesCardComponent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-}; 
+// Exported component with DataComponentWrapper
+export const ErrorResponsesCard: React.FC = () => (
+	<DataComponentWrapper>
+		<ErrorResponsesCardComponent />
+	</DataComponentWrapper>
+); 

@@ -1,25 +1,18 @@
-import React, { Suspense, useMemo } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
-import { useSqlData } from '../../hooks/useSqlData';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import React, { useMemo } from 'react';
 import { BarChartUI } from '../charts/BarChartUI';
 import { 
 	RawTopPagesData, 
 	transformTopPagesData, 
 	BarChartConfig
 } from '../charts/BarChartTransformer';
-import { getCookie } from '../../utils/cookies';
+import { 
+	useLogFileData, 
+	DataComponentWrapper,
+	createTitle
+} from '../../shared/analytics-utils';
 import { EXTENDED_COLORS, CHART_DEFAULTS } from '../../theme/chartTheme';
 
-// Custom hook to get the selected log file ID
-const useSelectedLogFile = () => {
-	const COOKIE_NAME = 'selected_log_file';
-	return getCookie(COOKIE_NAME);
-};
-
-// SQL Query for TopPagesChart with better path extraction and placeholder for log_file_id condition
+// SQL Query for TopPagesChart with better path extraction
 const TOP_PAGES_SQL_QUERY = `
     SELECT 
         CASE 
@@ -45,7 +38,7 @@ const TOP_PAGES_SQL_QUERY = `
 // Chart configuration - will be modified at runtime based on log file selection
 const getChartConfig = (logFileId: string | null): Partial<BarChartConfig> => {
 	return {
-		title: `📄 Top Requested Pages${logFileId ? "" : " - All Log Files"}`,
+		title: createTitle('📄 Top Requested Pages', logFileId),
 		xAxisTitle: 'Visits',
 		yAxisTitle: 'Page URL',
 		horizontal: true,
@@ -62,27 +55,14 @@ const getChartConfig = (logFileId: string | null): Partial<BarChartConfig> => {
 
 // Inner component for logic
 const TopPagesChartComponent: React.FC = () => {
-	const logFileId = useSelectedLogFile();
-	
-	// Prepare SQL query based on log file selection
-	let sqlQuery = TOP_PAGES_SQL_QUERY;
-	let params: any[] = [];
-	
-	if (logFileId) {
-		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
-		params = [logFileId];
-	} else {
-		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
-	}
+	// Use our custom hook for data fetching with automatic log file handling
+	const { data: rawData, logFileId } = useLogFileData<RawTopPagesData[], RawTopPagesData[]>(
+		TOP_PAGES_SQL_QUERY,
+		[]
+	);
 	
 	// Get chart configuration with dynamic title
 	const CHART_CONFIG = getChartConfig(logFileId);
-
-	// Fetch data using the hook with TanStack Query v5 features
-	const { data: rawData } = useSqlData<RawTopPagesData[], RawTopPagesData[]>(
-		sqlQuery,
-		params,
-	);
 
 	// Memoize the transformed data to prevent unnecessary recalculations
 	const chartData = useMemo(() => {
@@ -98,17 +78,11 @@ const TopPagesChartComponent: React.FC = () => {
 	);
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const TopPagesChart: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<TopPagesChartComponent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-};
+// Exported component with DataComponentWrapper
+export const TopPagesChart: React.FC = () => (
+	<DataComponentWrapper>
+		<TopPagesChartComponent />
+	</DataComponentWrapper>
+);
 
 export default TopPagesChart; 

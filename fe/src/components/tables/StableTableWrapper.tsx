@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BaseTableUI, BaseTableUIProps } from './BaseTableUI';
-
-// Default empty array to ensure we always have valid data
-const EMPTY_ARRAY: any[] = [];
+import { EMPTY_ARRAY, TABLE_CONSTANTS } from '../../shared/table-utils';
 
 /**
  * This wrapper component ensures the BaseTableUI receives
@@ -51,7 +49,7 @@ export function StableTableWrapper<T extends object = any>(
     data: safeData,
     columns: safeColumns,
     // Set minimum valid values for any required properties
-    height: props.height || 400,
+    height: props.height || TABLE_CONSTANTS.DEFAULT_HEIGHT,
     className: props.className || '',
     tableClassName: props.tableClassName || ''
   };

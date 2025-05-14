@@ -1,12 +1,11 @@
-import React, { Suspense } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
 import { Link } from 'flowbite-react-icons/outline';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
-import { useSqlData } from '../../hooks/useSqlData';
-import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import { 
+  useLogFileData, 
+  DataComponentWrapper, 
+  getLogFileSuffix 
+} from '../../shared/analytics-utils';
 
 // Define the expected data shape
 interface AvgCrawlersData {
@@ -14,15 +13,10 @@ interface AvgCrawlersData {
   total_pages: number;
 }
 
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
-
 // Inner component for logic
 const CrawlersPerPageCardComponent: React.FC = () => {
-  const logFileId = getCookie(COOKIE_NAME);
-  
   // Base SQL with placeholder for the log_file_id condition
-  let sqlQuery = `
+  const sqlQuery = `
     WITH 
       page_crawler_counts AS (
         SELECT 
@@ -40,19 +34,10 @@ const CrawlersPerPageCardComponent: React.FC = () => {
     FROM page_crawler_counts
   `;
   
-  let params: any[] = [];
-  
-  // Only filter by log_file_id if a file is selected
-  if (logFileId) {
-    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
-    params = [logFileId];
-  } else {
-    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
-  }
-
-  const { data: avgData } = useSqlData<AvgCrawlersData[], AvgCrawlersData>(
+  // Use our custom hook instead of manually building the query
+  const { data: avgData, logFileId } = useLogFileData<AvgCrawlersData[], AvgCrawlersData>(
     sqlQuery,
-    params,
+    [],
     (data) => data?.[0]
   );
 
@@ -67,7 +52,7 @@ const CrawlersPerPageCardComponent: React.FC = () => {
     data: {
       title: "🕸️ Crawlers per Page",
       number: formattedAvg,
-      subtext: `Across ${totalPages} unique pages${logFileId ? "" : " - All Log Files"}`,
+      subtext: `Across ${totalPages} unique pages${getLogFileSuffix(logFileId)}`,
     },
     icon: Link,
   };
@@ -75,15 +60,9 @@ const CrawlersPerPageCardComponent: React.FC = () => {
   return <StatsCard {...statsCardProps} />;
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const CrawlersPerPageCard: React.FC = () => {
-  const { reset } = useQueryErrorResetBoundary();
-
-  return (
-    <ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-      <Suspense fallback={<CardLoadingSpinner />}>
-        <CrawlersPerPageCardComponent />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}; 
+// Exported component with DataComponentWrapper
+export const CrawlersPerPageCard: React.FC = () => (
+  <DataComponentWrapper>
+    <CrawlersPerPageCardComponent />
+  </DataComponentWrapper>
+); 

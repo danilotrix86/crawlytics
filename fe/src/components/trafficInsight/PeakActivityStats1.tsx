@@ -1,12 +1,13 @@
-import React, { Suspense } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
 import { Clock } from 'flowbite-react-icons/solid';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
+import { 
+	DataComponentWrapper,
+	getLogFileSuffix,
+	SELECTED_LOG_FILE_COOKIE
+} from '../../shared/analytics-utils';
 import { useSqlData } from '../../hooks/useSqlData';
 import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
 
 // Define the expected data shape from the SQL query
 interface PeakHourData {
@@ -14,9 +15,6 @@ interface PeakHourData {
 	request_count: number;
 	percentage: number;
 }
-
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
 
 // Helper function to format hour
 const formatHour = (hour: number | null | undefined): string => {
@@ -29,7 +27,9 @@ const formatHour = (hour: number | null | undefined): string => {
 
 // Inner component for logic
 const PeakActivityStats1Component: React.FC = () => {
-	const logFileId = getCookie(COOKIE_NAME);
+	const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE);
+	
+	// Base SQL query with multiple placeholders that need to be handled manually
 	let sqlQuery = `
 		WITH HourlyCounts AS (
 			SELECT 
@@ -37,29 +37,38 @@ const PeakActivityStats1Component: React.FC = () => {
 				CAST(strftime('%H', time) AS INTEGER) as hour_of_day,
 				COUNT(*) as request_count
 			FROM access_logs
-			WHERE time IS NOT NULL {LOG_FILE_CONDITION}
+			WHERE time IS NOT NULL
+		`;
+		
+	// Add parameters for log file filtering
+	let params: any[] = [];
+	
+	if (logFileId) {
+		sqlQuery += ` AND log_file_id = ?`;
+		params.push(logFileId);
+	}
+	
+	sqlQuery += `
 			GROUP BY hour_of_day
 		)
 		SELECT 
 			hour_of_day,
 			request_count,
-			CAST((request_count * 100.0 / (SELECT COUNT(*) FROM access_logs {TOTAL_LOG_FILE_CONDITION})) AS INTEGER) as percentage
+			CAST((request_count * 100.0 / (SELECT COUNT(*) FROM access_logs 
+	`;
+	
+	// Add the same condition to the subquery
+	if (logFileId) {
+		sqlQuery += ` WHERE log_file_id = ?`;
+		params.push(logFileId);
+	}
+	
+	sqlQuery += `
+			)) AS INTEGER) as percentage
 		FROM HourlyCounts
 		ORDER BY request_count DESC
 		LIMIT 1 OFFSET 0;
 	`;
-	
-	let params: any[] = [];
-	
-	// Only filter by log_file_id if a file is selected
-	if (logFileId) {
-		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "AND log_file_id = ?");
-		sqlQuery = sqlQuery.replace("{TOTAL_LOG_FILE_CONDITION}", "WHERE log_file_id = ?");
-		params = [logFileId, logFileId];
-	} else {
-		sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION}", "");
-		sqlQuery = sqlQuery.replace("{TOTAL_LOG_FILE_CONDITION}", "");
-	}
 
 	const { data: peakHours } = useSqlData<PeakHourData[], PeakHourData[]>(
 		sqlQuery,
@@ -77,7 +86,7 @@ const PeakActivityStats1Component: React.FC = () => {
 		data: {
 			title: formatHour(hourData.hour_of_day),
 			number: '⏱️ Peak Activity 1',
-			subtext: `${hourData.request_count.toLocaleString()} requests (${hourData.percentage}%)${logFileId ? "" : " - All Log Files"}`,
+			subtext: `${hourData.request_count.toLocaleString()} requests (${hourData.percentage}%)${getLogFileSuffix(logFileId)}`,
 		},
 		icon: Clock, 
 	};
@@ -85,15 +94,9 @@ const PeakActivityStats1Component: React.FC = () => {
 	return <StatsCard {...statsCardProps} />;
 };
 
-// Exported component
-export const PeakActivityStats1: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}>
-				<PeakActivityStats1Component />
-			</Suspense>
-		</ErrorBoundary>
-	);
-}; 
+// Exported component with DataComponentWrapper
+export const PeakActivityStats1: React.FC = () => (
+	<DataComponentWrapper>
+		<PeakActivityStats1Component />
+	</DataComponentWrapper>
+); 

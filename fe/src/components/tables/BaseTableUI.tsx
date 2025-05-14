@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card } from 'flowbite-react';
 import { createApexGridWrapper, ColumnConfiguration } from './apex-grid-factory';
+import { TABLE_CONSTANTS } from '../../shared/table-utils';
 
 // Create a non-generic grid for the base component
 const BaseApexGrid = createApexGridWrapper<any>();
@@ -33,8 +34,6 @@ export interface BaseTableUIProps<T extends object = any> {
   onFiltered?: (e: CustomEvent<any>) => void;
 }
 
-const DEFAULT_HEIGHT = 400;
-
 // Base table UI component
 export const BaseTableUI = React.memo(function BaseTableUI<T extends object>({
   data,
@@ -50,20 +49,20 @@ export const BaseTableUI = React.memo(function BaseTableUI<T extends object>({
   noDataComponent,
   noDataMessage = 'No data available',
   height: propHeight,
-  minHeight = 200,
+  minHeight = TABLE_CONSTANTS.MIN_HEIGHT,
   onSorting,
   onSorted,
   onFiltering,
   onFiltered,
 }: BaseTableUIProps<T>): React.ReactElement {
   // Configure height with defaults
-  const tableHeight = propHeight || DEFAULT_HEIGHT;
+  const tableHeight = propHeight || TABLE_CONSTANTS.DEFAULT_HEIGHT;
   
   // Get numeric height for container sizing
   const numericHeight = typeof tableHeight === 'string' ?
     parseInt(tableHeight, 10) : tableHeight;
   const validHeight = isNaN(numericHeight) || numericHeight <= 0 ?
-    DEFAULT_HEIGHT : numericHeight;
+    TABLE_CONSTANTS.DEFAULT_HEIGHT : numericHeight;
 
   // Determine if there's data to show
   const hasData = !loading && Array.isArray(data) && data.length > 0;

@@ -1,7 +1,8 @@
 import { COUNTRY_CODE_SQL_FRAGMENT } from './countryMappings';
+import { SELECTED_LOG_FILE_COOKIE } from '../shared/analytics-utils';
 
-// Cookie name constant
-export const COOKIE_NAME = 'selected_log_file';
+// Cookie name constant - use the shared one
+export const COOKIE_NAME = SELECTED_LOG_FILE_COOKIE;
 
 /**
  * SQL Query to get geo data for the world map

@@ -1,12 +1,13 @@
-import React, { Suspense } from 'react';
-import { useQueryErrorResetBoundary } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React from 'react';
 import { Component as StatsCard } from '../stats/StatsCard';
 import { Award } from 'flowbite-react-icons/solid';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
+import { 
+  DataComponentWrapper,
+  getLogFileSuffix,
+  SELECTED_LOG_FILE_COOKIE
+} from '../../shared/analytics-utils';
 import { useSqlData } from '../../hooks/useSqlData';
 import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
 
 // Define the expected data shape
 interface CrawlerData {
@@ -15,14 +16,11 @@ interface CrawlerData {
   percentage: number;
 }
 
-// Constant for cookie name
-const COOKIE_NAME = 'selected_log_file';
-
 // Inner component for logic
 const MostActiveCrawlerCardComponent: React.FC = () => {
-  const logFileId = getCookie(COOKIE_NAME);
+  const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE);
   
-  // Base SQL with placeholders for the log_file_id condition
+  // Build the query with explicit conditions for both subqueries
   let sqlQuery = `
     SELECT 
       crawler_data.crawler_name,
@@ -32,7 +30,18 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
       (
         SELECT COALESCE(crawler_name, 'Unknown') AS crawler_name, COUNT(*) AS total
         FROM access_logs
-        WHERE 1=1 {LOG_FILE_CONDITION1}
+        WHERE 1=1
+  `;
+  
+  // Add log file conditions and parameters
+  let params: any[] = [];
+  
+  if (logFileId) {
+    sqlQuery += ` AND log_file_id = ?`;
+    params.push(logFileId);
+  }
+  
+  sqlQuery += `
         GROUP BY crawler_name
         ORDER BY total DESC
         LIMIT 1
@@ -40,25 +49,20 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
       (
         SELECT COUNT(*) AS count
         FROM access_logs
-        WHERE 1=1 {LOG_FILE_CONDITION2}
+        WHERE 1=1
+  `;
+  
+  // Add the same condition to the second subquery
+  if (logFileId) {
+    sqlQuery += ` AND log_file_id = ?`;
+    params.push(logFileId);
+  }
+  
+  sqlQuery += `
       ) AS total_data
   `;
   
-  // Prepare parameters and adjust query based on log file selection
-  let params: any[] = [];
-  
-  if (logFileId) {
-    // Replace placeholders with actual conditions
-    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION1}", "AND log_file_id = ?");
-    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION2}", "AND log_file_id = ?");
-    // Add the parameter twice since it's used in both subqueries
-    params = [logFileId, logFileId];
-  } else {
-    // Remove the placeholders when no log file is selected
-    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION1}", "");
-    sqlQuery = sqlQuery.replace("{LOG_FILE_CONDITION2}", "");
-  }
-
+  // Use direct SQL data fetching instead of the utility hook
   const { data: crawlerData } = useSqlData<CrawlerData[], CrawlerData>(
     sqlQuery,
     params,
@@ -74,7 +78,7 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
     data: {
       title: "🤖 Top Crawler",
       number: crawlerName,
-      subtext: `${percentage}% of traffic (${total} requests)${logFileId ? "" : " - All Log Files"}`,
+      subtext: `${percentage}% of traffic (${total} requests)${getLogFileSuffix(logFileId)}`,
     },
     icon: Award,
   };
@@ -82,15 +86,9 @@ const MostActiveCrawlerCardComponent: React.FC = () => {
   return <StatsCard {...statsCardProps} />;
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const MostActiveCrawlerCard: React.FC = () => {
-  const { reset } = useQueryErrorResetBoundary();
-
-  return (
-    <ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-      <Suspense fallback={<CardLoadingSpinner />}>
-        <MostActiveCrawlerCardComponent />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}; 
+// Exported component with DataComponentWrapper
+export const MostActiveCrawlerCard: React.FC = () => (
+  <DataComponentWrapper>
+    <MostActiveCrawlerCardComponent />
+  </DataComponentWrapper>
+); 

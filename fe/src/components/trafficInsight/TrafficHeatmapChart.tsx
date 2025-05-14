@@ -1,19 +1,23 @@
-import React, { Suspense, useMemo } from 'react';
-import { useQueryErrorResetBoundary, useSuspenseQuery } from '@tanstack/react-query';
-import { ErrorBoundary } from 'react-error-boundary';
+import React, { useMemo } from 'react';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { HeatmapChartUI } from '../charts/HeatmapChartUI';
-import CardLoadingSpinner from '../ui/CardLoadingSpinner';
 import {
 	RawHeatmapData,
 	transformGenericHeatmapData,
 	HeatmapSeries,
 	HeatmapChartConfig
 } from '../charts/HeatmapChartTransformer';
-import { getCookie } from '../../utils/cookies';
-import { DefaultQueryErrorFallback } from '../ui/DefaultQueryErrorFallback';
+import { 
+    getCookie, 
+} from '../../utils/cookies';
+import { 
+    DataComponentWrapper,
+    getLogFileSuffix,
+    SELECTED_LOG_FILE_COOKIE 
+} from '../../shared/analytics-utils';
 import { CHART_DEFAULTS } from '../../theme/chartTheme';
 import { pythonApiFetch } from '../../utils/pythonApiClient';
-import { ApiError, defaultQueryOptions } from '../../hooks/queries/types';
+import { ApiError } from '../../hooks/queries/types';
 
 // Placeholder Color Utility - Replace with your actual implementation if needed
 const ColorUtil = {
@@ -37,12 +41,6 @@ const ColorUtil = {
             return color; // Return original color on error
         }
     }
-};
-
-// Custom hook to get the selected log file ID
-const useSelectedLogFile = () => {
-	const COOKIE_NAME = 'selected_log_file';
-	return getCookie(COOKIE_NAME);
 };
 
 // SQL Query for Traffic Heatmap using SQLite functions
@@ -100,10 +98,9 @@ const generateColorRanges = (maxCount: number): any[] => {
     });
 };
 
-
 // Chart configuration setup function
 const getChartConfig = (title: string, maxCount: number, logFileId: string | null): Partial<HeatmapChartConfig> => ({
-	title: `${title}${logFileId ? "" : " - All Log Files"}`,
+	title: `${title}${getLogFileSuffix(logFileId)}`,
 	height: CHART_DEFAULTS.height.medium, // Adjust height as needed
 	emptyMessage: 'No Traffic Data Available for this Period',
 	showDataLabels: false, // Heatmaps often look cluttered with labels
@@ -164,7 +161,7 @@ const useLLMTrafficData = (logFileId: string | null) => {
 
 // Inner component for logic
 const TrafficHeatmapChartComponent: React.FC = () => {
-	const logFileId = useSelectedLogFile();
+	const logFileId = getCookie(SELECTED_LOG_FILE_COOKIE);
     
     // Fetch traffic data
     const { data: rawData } = useLLMTrafficData(logFileId);
@@ -207,17 +204,11 @@ const TrafficHeatmapChartComponent: React.FC = () => {
 	);
 };
 
-// Exported component with Suspense/ErrorBoundary
-export const TrafficHeatmapChart: React.FC = () => {
-	const { reset } = useQueryErrorResetBoundary();
-
-	return (
-		<ErrorBoundary onReset={reset} FallbackComponent={DefaultQueryErrorFallback}>
-			<Suspense fallback={<CardLoadingSpinner />}> 
-				<TrafficHeatmapChartComponent />
-			</Suspense>
-		</ErrorBoundary>
-	);
-};
+// Exported component with DataComponentWrapper
+export const TrafficHeatmapChart: React.FC = () => (
+    <DataComponentWrapper>
+        <TrafficHeatmapChartComponent />
+    </DataComponentWrapper>
+);
 
 export default TrafficHeatmapChart; 

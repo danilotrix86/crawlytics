@@ -4,6 +4,7 @@ import { getCookie } from '../../utils/cookies';
 import { getCountryName, getColorByPercentage } from '../../utils/countryMappings';
 import { COOKIE_NAME, getGeoDataQuery, prepareQuery } from '../../utils/geoQueries';
 import DataComponentWrapper from './shared/DataComponentWrapper';
+import { getLogFileSuffix } from '../../shared/analytics-utils';
 
 // Type for country data
 interface CountryHits {
@@ -66,7 +67,7 @@ const GeoWorldMapComponent: React.FC<GeoWorldMapProps> = ({ countryHits: externa
     <div className="border rounded-lg bg-white dark:bg-gray-800 shadow-md p-4 h-full">
       <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
         Global Request Distribution
-        {!logFileId && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">- All Log Files</span>}
+        <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">{getLogFileSuffix(logFileId)}</span>
       </h2>
       
       {/* Legend */}
