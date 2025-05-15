@@ -27,18 +27,6 @@ const CrawlerBehaviour: React.FC<CrawlerBehaviourProps> = memo(({ className = ''
 			<div className="grid grid-cols-1 gap-4 mb-6">
 				<CrawlerPathsChart />
 			</div>
-			
-			<div className="grid grid-cols-1 gap-4 mb-6">
-				<div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-					<h2 className="text-xl font-semibold mb-2">Crawler Identification Accuracy</h2>
-					<p className="text-gray-600 dark:text-gray-300 mb-4">
-						This table shows how accurately different crawlers identify themselves and their compliance with standards.
-					</p>
-					<div className="h-80 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded">
-						<p className="text-gray-500 dark:text-gray-400">Crawler Identification Table</p>
-					</div>
-				</div>
-			</div>
 		</div>
 	);
 });
