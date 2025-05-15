@@ -7,6 +7,7 @@ import TrafficInsight from '../pages/TrafficInsight';
 import LogsTable from '../pages/LogsTable';
 import GeographicInsight from '../pages/GeographicInsight';
 import Settings from '../pages/Settings';
+import CrawlerBehaviour from '../pages/CrawlerBehaviour';
 
 // Using React 19 function declaration style without unnecessary props
 const AppRoutes = () => (
@@ -17,6 +18,7 @@ const AppRoutes = () => (
 			<Route path="/upload" element={<UploadPage />} />
 			<Route path="/traffic-insight" element={<TrafficInsight />} />
 			<Route path="/geographic-insight" element={<GeographicInsight />} />
+			<Route path="/crawler-behaviour" element={<CrawlerBehaviour />} />
 			<Route path="/logs" element={<LogsTable />} />
 			<Route path="/settings" element={<Settings />} />
 			<Route path="/" element={<Navigate to="/dashboard" replace />} />
