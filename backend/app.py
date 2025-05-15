@@ -1,6 +1,5 @@
 import os
 import logging
-import sys
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -10,25 +9,6 @@ import uvicorn
 # Import routes
 from routes.logs import router as logs_router
 from routes.crawler_config import router as crawler_config_router
-
-# Fix for running as packaged application where stdout might be None
-# This prevents the "NoneType has no attribute isatty" error
-def fix_logging_for_packaged_app():
-    # Only apply fix when running as a packaged app (PyInstaller)
-    if getattr(sys, 'frozen', False):
-        # Override uvicorn's ColourizedFormatter to avoid isatty checks
-        from uvicorn.logging import ColourizedFormatter
-        original_init = ColourizedFormatter.__init__
-        
-        def patched_init(self, *args, **kwargs):
-            # Remove use_colors argument to avoid isatty check
-            kwargs['use_colors'] = False
-            original_init(self, *args, **kwargs)
-            
-        ColourizedFormatter.__init__ = patched_init
-
-# Apply logging fix
-fix_logging_for_packaged_app()
 
 # Configure logging
 logging.basicConfig(
@@ -42,20 +22,37 @@ logging.basicConfig(
 
 logger = logging.getLogger("crawlytics-api")
 
-# Create FastAPI app
+# Check if we're in production mode
+production = os.environ.get("PRODUCTION", "").lower() in ("1", "true", "yes")
+
+# Create FastAPI app with appropriate settings
 app = FastAPI(
     title="Crawlytics API",
     description="API for processing server logs and identifying LLM crawler requests",
-    version="1.0.0"
+    version="1.0.0",
+    # Disable docs in production mode
+    docs_url=None if production else "/docs",
+    redoc_url=None if production else "/redoc",
 )
+
+# CORS settings based on environment
+origins = ["*"]  # Default for development
+if production:
+    # In production, restrict to specific domains
+    origins = [
+        "http://localhost",
+        "http://localhost:8000",
+        # Add your production domains here
+        # "https://your-production-domain.com"
+    ]
 
 # Setup CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # For development; restrict in production
+    allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"] if production else ["*"],
+    allow_headers=["Content-Type", "Authorization"] if production else ["*"],
 )
 
 # Include routers
@@ -64,20 +61,38 @@ app.include_router(crawler_config_router, prefix="/api")
 
 # Define the path to the static files (React build)
 static_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "react")
+logger.info(f"Serving React app from: {static_files_dir}")
 
-# Mount the static files directory
-app.mount("/assets", StaticFiles(directory=os.path.join(static_files_dir, "assets")), name="assets")
-app.mount("/logo", StaticFiles(directory=os.path.join(static_files_dir, "logo")), name="logo")
+# Check if directories exist before mounting
+assets_dir = os.path.join(static_files_dir, "assets")
+logo_dir = os.path.join(static_files_dir, "logo")
+
+# Mount the static files directory if they exist
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+if os.path.exists(logo_dir):
+    app.mount("/logo", StaticFiles(directory=logo_dir), name="logo")
 
 # Serve favicon.ico
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    return FileResponse(os.path.join(static_files_dir, "favicon.ico"))
+    favicon_path = os.path.join(static_files_dir, "favicon.ico")
+    if os.path.exists(favicon_path):
+        return FileResponse(favicon_path)
+    return {"detail": "Not found"}
 
 # Serve vite.svg
 @app.get("/vite.svg", include_in_schema=False)
 async def vite_svg():
-    return FileResponse(os.path.join(static_files_dir, "vite.svg"))
+    svg_path = os.path.join(static_files_dir, "vite.svg")
+    if os.path.exists(svg_path):
+        return FileResponse(svg_path)
+    return {"detail": "Not found"}
+
+# Add a health check endpoint
+@app.get("/health", tags=["Health"])
+async def health_check():
+    return {"status": "ok"}
 
 # Catch-all route to serve index.html for any other routes (for client-side routing)
 @app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
@@ -86,13 +101,16 @@ async def serve_react_app(request: Request, full_path: str):
     if full_path.startswith("api/"):
         return {"detail": "Not Found"}
     
-    # Log the request path
-    logger.info(f"Serving React app for path: {full_path}")
+    # Log the request path at debug level to avoid log spam
+    logger.debug(f"Serving React app for path: {full_path}")
     
     # Return the index.html file for all other routes
-    return FileResponse(os.path.join(static_files_dir, "index.html"))
+    index_path = os.path.join(static_files_dir, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return {"detail": "React app not found"}
 
 if __name__ == "__main__":
-    # Run uvicorn server
-    logger.info(f"Starting server with React app at {static_files_dir}")
+    # Run uvicorn server directly (for development)
+    logger.info("Starting server directly from app.py")
     uvicorn.run(app, host="0.0.0.0", port=8000)
