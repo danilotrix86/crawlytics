@@ -155,29 +155,9 @@ The stacked area chart shows crawler activity over time:
 - Daily activity trends showing peak usage periods
 - Comparative view of crawler distribution and market share
 
-### Top Crawlers by Request Volume
+### Traffic Insight Heatmap
 
-![Top Crawlers by Request Volume](screenshots/crawler-request-volume.png)
-
-This horizontal bar chart provides a clear ranking of crawlers by total requests:
-- Visual comparison of different crawler activities
-- Ranked display of most active crawlers
-- Clear visualization of relative crawler activity
-- Complete ranking of all significant LLM and traditional crawlers
-
-### Traffic Insight Peaks
-
-![Traffic Insight Peaks](screenshots/traffic-peak-hours.png)
-
-The traffic insights section highlights key activity periods:
-- Peak activity times with precise request counts
-- Percentage of traffic during high-volume periods
-- Time-based pattern analysis for capacity planning
-- Quick identification of when your content is most accessed
-
-### Traffic Heatmap by Day and Hour
-
-![Traffic Heatmap by Day and Hour](screenshots/traffic-heatmap.png)
+![Traffic Insight Heatmap](screenshots/traffic-insight-heatmap.png)
 
 The detailed heatmap visualization shows:
 - Traffic intensity by day of week and hour of day
@@ -185,9 +165,9 @@ The detailed heatmap visualization shows:
 - Clear patterns of high and low activity periods
 - Easy identification of when LLM crawlers are most active on your site
 
-### Geographic Distribution
+### Geographic Insights
 
-![Geographic Distribution](screenshots/geographic-distribution.png)
+![Geographic Insights](screenshots/geo-insight.png)
 
 The geographic insight panel displays:
 - Global request distribution with percentage breakdowns
@@ -195,9 +175,9 @@ The geographic insight panel displays:
 - Regional traffic patterns and hotspots
 - Comprehensive breakdown of traffic sources by region
 
-### Crawler Behavior Analysis
+### Crawler Behaviour Analysis
 
-![Crawler Behavior Analysis](screenshots/crawler-behavior.png)
+![Crawler Behaviour Analysis](screenshots/crawler-behaviour.png)
 
 The crawler behavior panel provides advanced metrics:
 - Crawler speed metrics showing requests per minute
@@ -205,9 +185,9 @@ The crawler behavior panel provides advanced metrics:
 - Error rate statistics with troubleshooting guidance
 - Path analysis showing most accessed content by crawler
 
-### Detailed Access Logs
+### Access Log Table
 
-![Detailed Access Logs](screenshots/access-logs-table.png)
+![Access Log Table](screenshots/access-log-table.png)
 
 The logs table provides granular access to your data:
 - Advanced filtering by crawler, path, method, and status code
@@ -215,9 +195,9 @@ The logs table provides granular access to your data:
 - Real-time IP address and request details
 - Sortable columns for customized analysis
 
-### Log File Upload
+### Log Upload Interface
 
-![Log File Upload](screenshots/log-upload-interface.png)
+![Log Upload Interface](screenshots/log-upload.png)
 
 The simple upload interface allows you to:
 - Select and upload server log files (.log or .txt)
@@ -225,9 +205,19 @@ The simple upload interface allows you to:
 - Automatically analyze and extract LLM crawler data
 - Seamlessly integrate new data into your analytics
 
-### Navigation Interface
+### LLM Crawler Settings
 
-<img src="screenshots/app-navigation.png" width="35%" alt="Navigation Sidebar">
+![LLM Crawler Settings](screenshots/crawler-settings-panel.png)
+
+The settings panel allows you to customize crawler detection:
+- Maintain a comprehensive list of LLM crawler patterns
+- Add new crawler user agents as they emerge
+- Configure detection parameters for optimal accuracy
+- Reset to default patterns or save custom configurations
+
+### Navigation Sidebar
+
+<img src="screenshots/sidebar.png" width="35%" alt="Navigation Sidebar">
 
 The sidebar navigation provides quick access to:
 - Dashboard overview and key metrics
