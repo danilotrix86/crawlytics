@@ -20,7 +20,7 @@ const Dashboard: React.FC<DashboardProps> = memo(({ className = '' }) => {
 		<div className={className} >
 			{/* React 19 Document Metadata */}
 			<title>Crawlytics Dashboard</title>
-			<meta name="description" content="View your web crawling analytics" />
+			<meta name="description" content="View your web crawling analytics" /> 
 
 			<h1 className="text-3xl font-bold mb-6 ">Dashboard</h1>
 			

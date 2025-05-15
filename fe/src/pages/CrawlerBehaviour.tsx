@@ -24,12 +24,6 @@ const CrawlerBehaviour: React.FC<CrawlerBehaviourProps> = memo(({ className = ''
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 				<CrawlerRequestRateCard />
 				<PathDepthAnalysisCard />
-				<HttpMethodUsageCard />
-			</div>
-			
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-				<CrawlerConsistencyCard />
-				<UserAgentComplexityCard />
 				<CrawlerErrorRateCard />
 			</div>
 			
