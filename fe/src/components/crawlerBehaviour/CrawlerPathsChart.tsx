@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import ReactApexChart from 'react-apexcharts';
 import { ApexOptions } from 'apexcharts';
 import { 
@@ -7,194 +7,166 @@ import {
   createTitle
 } from '../../shared/analytics-utils';
 
-// SQL Query for crawler paths analysis
-const CRAWLER_PATHS_SQL = `
-  WITH path_segments AS (
-    SELECT 
-      crawler_name,
-      CASE 
-        WHEN path LIKE '/' THEN '/'
-        WHEN path LIKE '/%' THEN 
-          CASE 
-            WHEN instr(substr(path, 2), '/') > 0 
-            THEN '/' || substr(path, 2, instr(substr(path, 2), '/'))
-            ELSE path
-          END
-        ELSE path
-      END as path_segment,
-      COUNT(*) as request_count
-    FROM access_logs
-    WHERE 
-      crawler_name IS NOT NULL
-      {LOG_FILE_CONDITION}
-    GROUP BY crawler_name, path_segment
-    ORDER BY request_count DESC
-  )
-  SELECT 
-    crawler_name,
-    path_segment,
-    request_count
-  FROM path_segments
-  ORDER BY crawler_name, request_count DESC
-  LIMIT 50
+const DISTINCT_CRAWLERS_SQL = `
+  SELECT crawler_name, COUNT(*) as request_count
+  FROM access_logs
+  WHERE crawler_name IS NOT NULL AND crawler_name != '' {LOG_FILE_CONDITION}
+  GROUP BY crawler_name
+  ORDER BY request_count DESC
 `;
 
-// Type definitions
-interface PathData {
+const TOP_PATHS_FOR_CRAWLER_SQL = `
+  SELECT 
+    path as path_segment,
+    COUNT(*) as request_count
+  FROM access_logs
+  WHERE crawler_name = ? {LOG_FILE_CONDITION}
+  GROUP BY path_segment
+  ORDER BY request_count DESC
+  LIMIT 12
+`;
+
+interface CrawlerOption {
   crawler_name: string;
+  request_count: number;
+}
+
+interface PathData {
   path_segment: string;
   request_count: number;
 }
 
-// Function to transform SQL data into chart format
-const transformPathData = (data: PathData[]) => {
-  if (!data || !data.length) {
-    return {
-      series: [],
-      labels: []
-    };
-  }
-
-  // Group by crawler name
-  const crawlerGroups = new Map<string, {path: string, count: number}[]>();
-  
-  // Process and group the data
-  data.forEach(item => {
-    if (!crawlerGroups.has(item.crawler_name)) {
-      crawlerGroups.set(item.crawler_name, []);
-    }
-    
-    crawlerGroups.get(item.crawler_name)!.push({
-      path: item.path_segment,
-      count: item.request_count
-    });
-  });
-  
-  // Get top 5 crawlers by total activity
-  const topCrawlers = [...crawlerGroups.entries()]
-    .map(([name, paths]) => ({
-      name,
-      totalRequests: paths.reduce((sum, p) => sum + p.count, 0)
-    }))
-    .sort((a, b) => b.totalRequests - a.totalRequests)
-    .slice(0, 5)
-    .map(c => c.name);
-  
-  // Prepare series data for chart
-  const series = topCrawlers.map(crawlerName => {
-    const paths = crawlerGroups.get(crawlerName) || [];
-    // Sort by count and take top 8 paths
-    const topPaths = paths
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 8);
-    
-    return {
-      name: crawlerName,
-      data: topPaths.map(p => p.count)
-    };
-  });
-  
-  // Get unique path segments across top crawlers
-  const allTopPaths = new Set<string>();
-  topCrawlers.forEach(crawler => {
-    const paths = crawlerGroups.get(crawler) || [];
-    paths.slice(0, 8).forEach(p => allTopPaths.add(p.path));
-  });
-  
-  // Limit to most common paths if we have too many
-  let labels = [...allTopPaths].sort();
-  if (labels.length > 10) {
-    // This is a simplification - in a real app we would need more sophisticated logic
-    labels = labels.slice(0, 10);
-  }
-  
-  return {
-    series,
-    labels
-  };
-};
-
-// Content component
 const CrawlerPathsContent: React.FC = () => {
-  // Use our custom hook for data fetching
-  const { data, logFileId } = useLogFileData<PathData[]>(
-    CRAWLER_PATHS_SQL,
+  // Fetch all crawlers for dropdown
+  const { data: crawlersRaw, logFileId } = useLogFileData<CrawlerOption[]>(
+    DISTINCT_CRAWLERS_SQL,
     []
   );
-  
-  // Safe data handling
-  const safeData = Array.isArray(data) ? data : [];
-  
-  // Transform data for chart
-  const chartData = useMemo(() => transformPathData(safeData), [safeData]);
-  
+  const crawlers = Array.isArray(crawlersRaw) ? crawlersRaw : [];
+
+  // Default to the most active crawler
+  const [selectedCrawler, setSelectedCrawler] = useState<string>('');
+
+  // Set default crawler when crawlers are loaded
+  useEffect(() => {
+    if (crawlers.length > 0 && !selectedCrawler) {
+      setSelectedCrawler(crawlers[0].crawler_name);
+    }
+  }, [crawlers, selectedCrawler]);
+
+  // Fetch top 12 paths for the selected crawler
+  const { data: pathsRaw } = useLogFileData<PathData[]>(
+    TOP_PATHS_FOR_CRAWLER_SQL,
+    [selectedCrawler],
+    undefined,
+    { logFileConditionPlaceholder: '{LOG_FILE_CONDITION}' }
+  );
+  const paths = Array.isArray(pathsRaw) ? pathsRaw : [];
+
+  // Chart data
+  const chartData = useMemo(() => {
+    return {
+      series: [{
+        name: selectedCrawler,
+        data: paths.map(p => p.request_count)
+      }],
+      labels: paths.map(p => p.path_segment)
+    };
+  }, [paths, selectedCrawler]);
+
   // Chart options
   const chartOptions: ApexOptions = {
     chart: {
       type: 'bar',
       height: 350,
-      toolbar: {
-        show: true
-      },
-      stacked: true
+      toolbar: { show: true },
+      stacked: false
     },
     title: {
-      text: createTitle('🔍 Top Crawler Path Analysis', logFileId),
+      text: createTitle(`🔍 Top Pages for ${selectedCrawler}`, logFileId),
       align: 'left'
     },
     xaxis: {
       categories: chartData.labels,
-      title: {
-        text: 'Path Segments'
-      },
+      title: { text: 'Page Path' },
       labels: {
         rotate: -45,
-        style: {
-          fontSize: '12px'
-        }
+        style: { fontSize: '12px', fontFamily: 'monospace' },
+        formatter: (val: string) => val.length > 30 ? val.slice(0, 27) + '...' : val
       }
     },
     yaxis: {
-      title: {
-        text: 'Number of Requests'
-      }
+      title: { text: 'Number of Requests' }
     },
     tooltip: {
       y: {
         formatter: (value: number) => `${value} requests`
       }
     },
-    legend: {
-      position: 'top'
-    },
+    legend: { show: false },
     plotOptions: {
-      bar: {
-        horizontal: false,
-        columnWidth: '70%'
-      }
+      bar: { horizontal: false, columnWidth: '70%' }
     },
-    dataLabels: {
-      enabled: false
-    },
-    colors: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'],
-    fill: {
-      opacity: 1
-    }
+    dataLabels: { enabled: false },
+    colors: ['#3B82F6'],
+    fill: { opacity: 1 }
   };
-  
+
+  // Copy to clipboard handler
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+
   return (
     <div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-      <ReactApexChart 
-        options={chartOptions}
-        series={chartData.series}
-        type="bar"
-        height={350}
-      />
+      <div className="mb-4 max-w-xs">
+        <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-1 uppercase tracking-wide">Crawler</label>
+        <select
+          className="w-full px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white text-sm"
+          value={selectedCrawler}
+          onChange={e => setSelectedCrawler(e.target.value)}
+        >
+          {crawlers.map(c => (
+            <option key={c.crawler_name} value={c.crawler_name}>{c.crawler_name}</option>
+          ))}
+        </select>
+      </div>
+      {paths.length === 0 ? (
+        <div className="h-64 flex items-center justify-center text-gray-400 dark:text-gray-500">
+          No data for this crawler.
+        </div>
+      ) : (
+        <>
+          <ReactApexChart
+            options={chartOptions}
+            series={chartData.series}
+            type="bar"
+            height={350}
+          />
+          <div className="mt-4">
+            <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2 uppercase tracking-wide">Top Pages</div>
+            <ul className="space-y-1">
+              {chartData.labels.map((path, idx) => (
+                <li key={path} className="flex items-center gap-2">
+                  <span className="break-all" title={path}>{path}</span>
+                  <button
+                    className="ml-2 px-2 py-0.5 text-xs rounded bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600"
+                    onClick={() => handleCopy(path)}
+                    title="Copy path"
+                  >
+                    Copy
+                  </button>
+                  <span className="text-xs text-gray-400 ml-2">({chartData.series[0].data[idx]} requests)</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </>
+      )}
     </div>
   );
 };
 
-// Main exported component
 export const CrawlerPathsChart: React.FC = () => (
   <DataComponentWrapper>
     <CrawlerPathsContent />

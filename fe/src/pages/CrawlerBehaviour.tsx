@@ -1,9 +1,6 @@
 import React, { memo } from 'react';
 import { CrawlerRequestRateCard } from '../components/crawlerBehaviour/CrawlerRequestRateCard';
 import { PathDepthAnalysisCard } from '../components/crawlerBehaviour/PathDepthAnalysisCard';
-import { HttpMethodUsageCard } from '../components/crawlerBehaviour/HttpMethodUsageCard';
-import { CrawlerConsistencyCard } from '../components/crawlerBehaviour/CrawlerConsistencyCard';
-import { UserAgentComplexityCard } from '../components/crawlerBehaviour/UserAgentComplexityCard';
 import { CrawlerErrorRateCard } from '../components/crawlerBehaviour/CrawlerErrorRateCard';
 import { CrawlerPathsChart } from '../components/crawlerBehaviour/CrawlerPathsChart';
 
