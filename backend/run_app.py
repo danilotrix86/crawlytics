@@ -28,7 +28,9 @@ if os.environ.get("CRAWLYTICS_DEBUG", "").lower() in ("1", "true", "yes"):
 
 def get_base_dir():
     """Get the base directory for the application"""
-    base_dir = pathlib.Path(os.path.dirname(os.path.abspath(__file__)))
+    # Use Path for cross-platform compatibility
+    base_dir = pathlib.Path(os.path.abspath(__file__)).parent
+    base_dir = base_dir.resolve()  # Ensure we have the absolute path with symlinks resolved
     logger.debug(f"Using directory: {base_dir}")
     return base_dir
 
@@ -58,9 +60,22 @@ def main():
         host = "0.0.0.0" if production else "127.0.0.1"
         port = int(os.environ.get("PORT", "8000"))
         
-        # Configure server command
+        # Verify that the app.py file exists
+        app_path = base_dir / "app.py"
+        if not app_path.exists():
+            logger.error(f"app.py not found at: {app_path}")
+            sys.exit(1)
+            
+        # Verify that the react directory exists
+        react_path = base_dir / "react"
+        if not react_path.exists():
+            logger.warning(f"React directory not found at: {react_path}")
+            logger.warning("The application may not serve the frontend correctly.")
+        
+        # Configure server command - use module name rather than file path for better compatibility
         server_cmd = [
-            sys.executable, "-m", "uvicorn", "app:app", 
+            sys.executable, "-m", "uvicorn", 
+            "app:app",  # Use module:app format instead of file path 
             "--host", host, 
             "--port", str(port)
         ]
@@ -82,7 +97,7 @@ def main():
         if not production:
             # Determine platform-specific settings
             is_macos = platform.system() == "Darwin"
-            wait_time = 5 if is_macos else 3
+            wait_time = 7 if is_macos else 3  # Increase wait time for macOS
             logger.debug(f"Waiting {wait_time} seconds for server to start...")
             time.sleep(wait_time)
 
@@ -91,12 +106,21 @@ def main():
             logger.debug(f"Opening browser at {browser_url}")
             
             # Platform-specific browser opening
-            if is_macos:
-                subprocess.run(["open", browser_url])
-            else:
-                webbrowser.open(browser_url)
+            try:
+                if is_macos:
+                    subprocess.run(["open", browser_url])
+                else:
+                    webbrowser.open(browser_url)
+            except Exception as e:
+                logger.error(f"Error opening browser: {e}")
+                logger.info(f"Please manually open {browser_url} in your browser")
 
         logger.info("Server running. Press Ctrl+C to stop.")
+        # Check if server is still running
+        if server.poll() is not None:
+            logger.error(f"Server process exited with code {server.returncode}")
+            sys.exit(1)
+            
         server.wait()
         
     except Exception as e:

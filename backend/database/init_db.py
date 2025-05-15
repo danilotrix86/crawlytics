@@ -1,16 +1,17 @@
 import os
 import logging
 from datetime import datetime
+from pathlib import Path
 from .db import DBConnection
 
 # Get the database connection
 from .db import DBConnection
 
-# Get directory of the current file
-current_dir = os.path.dirname(os.path.abspath(__file__))
+# Get directory of the current file using pathlib
+current_dir = Path(__file__).parent.resolve()
 
 # Schema file path
-schema_file = os.path.join(current_dir, 'schema.sql')
+schema_file = current_dir / 'schema.sql'
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -39,14 +40,21 @@ def apply_schema(conn, schema_file):
     
     Args:
         conn: Database connection
-        schema_file (str): Path to the schema SQL file
+        schema_file (str or Path): Path to the schema SQL file
         
     Returns:
         bool: True if the schema was applied successfully, False otherwise
     """
     try:
+        schema_path = Path(schema_file)
+        logger.info(f"Applying schema from {schema_path}")
+        
+        if not schema_path.exists():
+            logger.error(f"Schema file not found: {schema_path}")
+            return False
+            
         # Read the schema file
-        with open(schema_file, 'r') as f:
+        with open(schema_path, 'r') as f:
             schema_sql = f.read()
             
         # Execute the schema SQL - SQLite requires separate statements
@@ -57,6 +65,7 @@ def apply_schema(conn, schema_file):
             if statement.strip():  # Skip empty statements
                 cursor.execute(statement)
         
+        logger.info("Schema applied successfully")
         return True
     except Exception as e:
         logger.error(f"Error applying schema: {e}")
@@ -86,6 +95,7 @@ def create_indexes(conn):
         # Analyze for query optimization (SQLite equivalent)
         cursor.execute("ANALYZE")
         
+        logger.info("Indexes created successfully")
         return True
     except Exception as e:
         logger.error(f"Error creating indexes: {e}")
@@ -102,6 +112,11 @@ def init_database():
         # Get a database connection
         with DBConnection() as conn:
             logger.info("Initializing database schema...")
+
+            # Check if tables already exist
+            if table_exists(conn, "access_logs"):
+                logger.info("Database already initialized")
+                return True
 
             # Apply schema
             success = apply_schema(conn, schema_file)

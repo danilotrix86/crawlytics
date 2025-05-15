@@ -2,6 +2,11 @@ import os
 import sqlite3
 import threading
 from pathlib import Path
+import platform
+import logging
+
+# Configure logging
+logger = logging.getLogger(__name__)
 
 # Default database configuration
 DEFAULT_DB_CONFIG = {
@@ -54,15 +59,27 @@ class Database:
         # Override with explicit parameters if provided
         config.update(kwargs)
         
-        # Ensure database directory exists
+        # Ensure database directory exists - use pathlib for platform compatibility
         db_path = Path(config["database"])
-        if not db_path.is_absolute():
+        
+        # Handle macOS specific issues with database paths
+        if platform.system() == "Darwin" and not db_path.is_absolute():
+            # On macOS, get application support directory for better file location
+            home = Path.home()
+            app_support = home / "Library" / "Application Support" / "Crawlytics"
+            app_support.mkdir(parents=True, exist_ok=True)
+            db_path = app_support / db_path.name
+            logger.info(f"Using macOS application support database path: {db_path}")
+        elif not db_path.is_absolute():
             # If relative path, make it relative to current directory
-            db_path = Path(os.getcwd()) / db_path
-            config["database"] = str(db_path)
+            db_path = Path.cwd() / db_path
             
         # Ensure directory exists
         db_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Store the resolved path
+        config["database"] = str(db_path)
+        logger.info(f"Using database at: {db_path}")
         
         # Store configuration
         self.config = config
@@ -80,24 +97,34 @@ class Database:
         
         if thread_id not in self.connection_cache:
             # Create new connection for this thread
-            conn = sqlite3.connect(
-                self.config["database"],
-                detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
-                isolation_level=None  # Enable autocommit mode by default
-            )
-            
-            # Enable recursive triggers for WAL mode
-            conn.execute("PRAGMA recursive_triggers = ON")
-            
-            # Apply pragmas for performance
-            for pragma, value in self.config.get("pragmas", {}).items():
-                conn.execute(f"PRAGMA {pragma} = {value}")
-            
-            # Configure connection
-            conn.row_factory = sqlite3.Row
-            
-            # Store in cache
-            self.connection_cache[thread_id] = conn
+            try:
+                conn = sqlite3.connect(
+                    self.config["database"],
+                    detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES,
+                    isolation_level=None  # Enable autocommit mode by default
+                )
+                
+                # Enable recursive triggers for WAL mode
+                conn.execute("PRAGMA recursive_triggers = ON")
+                
+                # Apply pragmas for performance
+                for pragma, value in self.config.get("pragmas", {}).items():
+                    conn.execute(f"PRAGMA {pragma} = {value}")
+                
+                # Configure connection
+                conn.row_factory = sqlite3.Row
+                
+                # Store in cache
+                self.connection_cache[thread_id] = conn
+                
+            except sqlite3.Error as e:
+                logger.error(f"Database connection error: {e}")
+                # If it's a file system error, output more diagnostics
+                logger.error(f"Database path: {self.config['database']}")
+                logger.error(f"Path exists: {os.path.exists(self.config['database'])}")
+                logger.error(f"Directory exists: {os.path.exists(os.path.dirname(self.config['database']))}")
+                logger.error(f"Directory is writable: {os.access(os.path.dirname(self.config['database']), os.W_OK)}")
+                raise
             
         return self.connection_cache[thread_id]
         

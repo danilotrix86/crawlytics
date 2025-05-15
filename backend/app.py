@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, HTMLResponse
 import uvicorn
+from pathlib import Path
 
 # Import routes
 from routes.logs import router as logs_router
@@ -59,34 +60,41 @@ app.add_middleware(
 app.include_router(logs_router, prefix="/api")
 app.include_router(crawler_config_router, prefix="/api")
 
-# Define the path to the static files (React build)
-static_files_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "react")
+# Define the path to the static files (React build) using pathlib for platform compatibility
+static_files_dir = Path(__file__).parent / "react"
+static_files_dir = static_files_dir.resolve()  # Ensure absolute path
 logger.info(f"Serving React app from: {static_files_dir}")
 
 # Check if directories exist before mounting
-assets_dir = os.path.join(static_files_dir, "assets")
-logo_dir = os.path.join(static_files_dir, "logo")
+assets_dir = static_files_dir / "assets"
+logo_dir = static_files_dir / "logo"
 
 # Mount the static files directory if they exist
-if os.path.exists(assets_dir):
-    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-if os.path.exists(logo_dir):
-    app.mount("/logo", StaticFiles(directory=logo_dir), name="logo")
+if assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+    logger.info(f"Mounted assets from: {assets_dir}")
+if logo_dir.exists():
+    app.mount("/logo", StaticFiles(directory=str(logo_dir)), name="logo")
+    logger.info(f"Mounted logo from: {logo_dir}")
+
+# Serve static files from the root directory
+app.mount("/", StaticFiles(directory=str(static_files_dir), html=True), name="static")
+logger.info(f"Mounted static files from: {static_files_dir}")
 
 # Serve favicon.ico
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    favicon_path = os.path.join(static_files_dir, "favicon.ico")
-    if os.path.exists(favicon_path):
-        return FileResponse(favicon_path)
+    favicon_path = static_files_dir / "favicon.ico"
+    if favicon_path.exists():
+        return FileResponse(str(favicon_path))
     return {"detail": "Not found"}
 
 # Serve vite.svg
 @app.get("/vite.svg", include_in_schema=False)
 async def vite_svg():
-    svg_path = os.path.join(static_files_dir, "vite.svg")
-    if os.path.exists(svg_path):
-        return FileResponse(svg_path)
+    svg_path = static_files_dir / "vite.svg"
+    if svg_path.exists():
+        return FileResponse(str(svg_path))
     return {"detail": "Not found"}
 
 # Add a health check endpoint
@@ -105,9 +113,11 @@ async def serve_react_app(request: Request, full_path: str):
     logger.debug(f"Serving React app for path: {full_path}")
     
     # Return the index.html file for all other routes
-    index_path = os.path.join(static_files_dir, "index.html")
-    if os.path.exists(index_path):
-        return FileResponse(index_path)
+    index_path = static_files_dir / "index.html"
+    if index_path.exists():
+        return FileResponse(str(index_path))
+    else:
+        logger.error(f"React app index.html not found at: {index_path}")
     return {"detail": "React app not found"}
 
 if __name__ == "__main__":
