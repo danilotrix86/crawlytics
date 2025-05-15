@@ -131,95 +131,123 @@ LLM_CRAWLER_PATTERNS = [
 
 Make these changes before processing log files to ensure they're detected correctly.
 
-## Distribution
-
-Create a standalone executable using the build script:
-
-**Windows**:
-```
-build.bat
-```
-
-**Note**: The packaging script is currently only available for Windows. For Mac/Linux, follow the manual build steps above.
-
-The script handles:
-- Frontend compilation
-- Asset cleanup and preparation
-- Backend bundling via PyInstaller
-- Archive creation for distribution
-
-## Implementation Details
-
-- **Frontend Components**: Located in `fe/src/components/`
-- **Backend Services**: 
-  - Log processing: `backend/processor/`
-  - API routes: `backend/routes/`
-  - Database operations: `backend/database/`
-
 ## Screenshots
 
-### Dashboard Overview
+### Main Dashboard
 
-![Dashboard Overview](screenshots/dashboard-overview.png)
+![Main Dashboard](screenshots/dashboard-metrics.png)
 
-The main dashboard displays key metrics about your log data:
-- Total log entries processed
-- Number of unique LLM crawlers detected
-- Unique URLs requested by crawlers
-- Top crawler by traffic volume
-- Error rate statistics
-- Average crawlers per page
+The main dashboard provides a comprehensive overview of your website's crawler activity:
+- Total log entries with detailed database statistics
+- Unique LLM crawlers detected with crawler identification
+- Distinct URLs requested by crawlers showing content accessed
+- Top crawler statistics with percentage breakdowns
+- Error rate analysis with client/server error distribution
+- Crawler density metrics showing average crawlers per page
 
-### Crawler Traffic Analysis
+### Top Crawler Activity Timeline
 
-![Crawler Traffic Analysis](screenshots/crawlers-overview.png)
+![Top Crawler Activity Timeline](screenshots/crawler-activity-timeline.png)
 
-The stacked area chart visualizes daily crawler activity by type, allowing you to:
-- Track traffic patterns over time
-- Compare relative activity between different AI systems
-- Identify peak crawler activity periods
-- Monitor trends in which AI systems are most active on your site
+The stacked area chart shows crawler activity over time:
+- Visualizes traffic patterns for multiple crawler types simultaneously
+- Color-coded areas for each crawler (ChatGPT-User, Googlebot, Bytespider, etc.)
+- Daily activity trends showing peak usage periods
+- Comparative view of crawler distribution and market share
 
-### Traffic Patterns Heatmap
+### Top Crawlers by Request Volume
 
-![Traffic Patterns Heatmap](screenshots/pick-heatmaps.png)
+![Top Crawlers by Request Volume](screenshots/crawler-request-volume.png)
 
-The traffic insights page features heatmaps showing:
-- Traffic volume by day of week and hour
-- Peak activity periods with precise request counts
-- Color intensity indicating request volume
-- Ability to identify when AI crawlers are most active on your site
+This horizontal bar chart provides a clear ranking of crawlers by total requests:
+- Visual comparison of different crawler activities
+- Ranked display of most active crawlers
+- Clear visualization of relative crawler activity
+- Complete ranking of all significant LLM and traditional crawlers
 
-### Log Upload Interface
+### Traffic Insight Peaks
 
-![Log Upload Interface](screenshots/upload-log.png)
+![Traffic Insight Peaks](screenshots/traffic-peak-hours.png)
 
-The simple upload interface allows you to:
-- Select and upload server log files (.log)
-- Process Apache or Nginx log files
-- Automatically analyze and extract LLM crawler data
+The traffic insights section highlights key activity periods:
+- Peak activity times with precise request counts
+- Percentage of traffic during high-volume periods
+- Time-based pattern analysis for capacity planning
+- Quick identification of when your content is most accessed
 
-### Detailed Log Analysis
+### Traffic Heatmap by Day and Hour
 
-![Detailed Log Analysis](screenshots/log-table.png)
+![Traffic Heatmap by Day and Hour](screenshots/traffic-heatmap.png)
+
+The detailed heatmap visualization shows:
+- Traffic intensity by day of week and hour of day
+- Color gradient indicating request volume
+- Clear patterns of high and low activity periods
+- Easy identification of when LLM crawlers are most active on your site
+
+### Geographic Distribution
+
+![Geographic Distribution](screenshots/geographic-distribution.png)
+
+The geographic insight panel displays:
+- Global request distribution with percentage breakdowns
+- Color-coded regions by request volume
+- Regional traffic patterns and hotspots
+- Comprehensive breakdown of traffic sources by region
+
+### Crawler Behavior Analysis
+
+![Crawler Behavior Analysis](screenshots/crawler-behavior.png)
+
+The crawler behavior panel provides advanced metrics:
+- Crawler speed metrics showing requests per minute
+- Path depth analysis showing navigation patterns
+- Error rate statistics with troubleshooting guidance
+- Path analysis showing most accessed content by crawler
+
+### Detailed Access Logs
+
+![Detailed Access Logs](screenshots/access-logs-table.png)
 
 The logs table provides granular access to your data:
-- Advanced filtering with SQL-like query syntax
-- Filter by crawler type, path, HTTP method, status code, and date
-- View raw log entries with their associated metadata
-- Toggle between grouped analytics and individual entries
+- Advanced filtering by crawler, path, method, and status code
+- Date range selection with precise timestamps
+- Real-time IP address and request details
+- Sortable columns for customized analysis
+
+### Log File Upload
+
+![Log File Upload](screenshots/log-upload-interface.png)
+
+The simple upload interface allows you to:
+- Select and upload server log files (.log or .txt)
+- Process Apache, Nginx, or other standard log formats
+- Automatically analyze and extract LLM crawler data
+- Seamlessly integrate new data into your analytics
+
+### LLM Crawler Settings
+
+![LLM Crawler Settings](screenshots/crawler-settings-panel.png)
+
+The settings panel allows you to customize crawler detection:
+- Maintain a comprehensive list of LLM crawler patterns
+- Add new crawler user agents as they emerge
+- Configure detection parameters for optimal accuracy
+- Reset to default patterns or save custom configurations
 
 ### Navigation Interface
 
-<img src="screenshots/sidebar.png" width="35%" alt="Navigation Sidebar">
+<img src="screenshots/app-navigation.png" width="35%" alt="Navigation Sidebar">
 
 The sidebar navigation provides quick access to:
-- Dashboard overview
-- Traffic insights
-- Geographic visualization
-- Logs tables
-- File upload
-- Log file management
+- Dashboard overview and key metrics
+- Traffic insight and pattern analysis
+- Geographic distribution visualization
+- Crawler behavior statistics
+- Detailed logs table with filtering
+- Log file upload interface
+- Settings and configuration options
+- Log file management and organization
 
 ## Contact
 
