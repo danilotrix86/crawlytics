@@ -225,16 +225,6 @@ The simple upload interface allows you to:
 - Automatically analyze and extract LLM crawler data
 - Seamlessly integrate new data into your analytics
 
-### LLM Crawler Settings
-
-![LLM Crawler Settings](screenshots/crawler-settings-panel.png)
-
-The settings panel allows you to customize crawler detection:
-- Maintain a comprehensive list of LLM crawler patterns
-- Add new crawler user agents as they emerge
-- Configure detection parameters for optimal accuracy
-- Reset to default patterns or save custom configurations
-
 ### Navigation Interface
 
 <img src="screenshots/app-navigation.png" width="35%" alt="Navigation Sidebar">
