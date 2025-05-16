@@ -36,6 +36,7 @@ backend/dist/
 backend/log_ingester/coverage/
 backend/log_ingester/*.profraw
 
+backend/crawlytics.db
 backend/crawlytics.db-shm
 backend/crawlytics.db-wal
 
