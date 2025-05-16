@@ -102,10 +102,10 @@ export function LogFileUpload() {
 			// Make absolutely sure cookie is set
 			document.cookie = `selected_log_file=${taskId}; max-age=${7 * 24 * 60 * 60}; path=/`;
 			
-			// Force a complete page reload
-			window.location.href = '/dashboard';
+			// Use React Router's navigate instead of direct URL manipulation
+			navigate('/dashboard');
 		}
-	}, [countdown, processingComplete, taskId]);
+	}, [countdown, processingComplete, taskId, navigate]);
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		if (e.target.files && e.target.files.length > 0) {
@@ -143,6 +143,17 @@ export function LogFileUpload() {
 		if (!taskStatus) return 'Initializing...';
 		if (taskStatus.message) return taskStatus.message;
 		return `Status: ${taskStatus.status}`;
+	};
+
+	const navigateToDashboard = () => {
+		// Make absolutely sure cookie is set
+		if (taskId) {
+			// Set cookie with path explicitly set to root
+			document.cookie = `selected_log_file=${taskId}; max-age=${7 * 24 * 60 * 60}; path=/`;
+			
+			// Use React Router's navigate
+			navigate('/dashboard');
+		}
 	};
 
 	return (
@@ -250,16 +261,7 @@ export function LogFileUpload() {
 							Upload Another File
 						</Button>
 						{isSuccess && (
-							<Button color="blue" onClick={() => {
-								// Make absolutely sure cookie is set
-								if (taskId) {
-									// Set cookie with path explicitly set to root
-									document.cookie = `selected_log_file=${taskId}; max-age=${7 * 24 * 60 * 60}; path=/`;
-									
-									// Force a complete page reload rather than React Router navigation
-									window.location.href = '/dashboard';
-								}
-							}}>
+							<Button color="blue" onClick={navigateToDashboard}>
 								View Dashboard Now
 							</Button>
 						)}
