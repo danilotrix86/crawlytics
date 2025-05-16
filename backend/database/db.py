@@ -62,18 +62,10 @@ class Database:
         # Ensure database directory exists - use pathlib for platform compatibility
         db_path = Path(config["database"])
         
-        # Handle macOS specific issues with database paths
-        if platform.system() == "Darwin" and not db_path.is_absolute():
-            # On macOS, get application support directory for better file location
-            home = Path.home()
-            app_support = home / "Library" / "Application Support" / "Crawlytics"
-            app_support.mkdir(parents=True, exist_ok=True)
-            db_path = app_support / db_path.name
-            logger.info(f"Using macOS application support database path: {db_path}")
-        elif not db_path.is_absolute():
-            # If relative path, make it relative to current directory
+        # Always use path relative to current working directory if not absolute
+        if not db_path.is_absolute():
             db_path = Path.cwd() / db_path
-            
+        
         # Ensure directory exists
         db_path.parent.mkdir(parents=True, exist_ok=True)
         

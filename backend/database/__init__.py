@@ -262,8 +262,11 @@ async def get_active_log_file() -> Optional[Dict[str, Any]]:
         Dictionary with log file information or None if no active log file
     """
     try:
+        logger = logging.getLogger("database")
+        logger.info("Opening DB connection for get_active_log_file")
         with DBConnection() as conn:
             cur = conn.cursor()
+            logger.info("Executing SELECT for active log file (in_use=1)")
             cur.execute("""
                 SELECT 
                     log_file_id, 
@@ -275,10 +278,10 @@ async def get_active_log_file() -> Optional[Dict[str, Any]]:
                     in_use = 1
                 LIMIT 1
             """)
-            
             row = cur.fetchone()
+            logger.info(f"Result for in_use=1: {row}")
             if not row:
-                # If no active log file, try to get the most recent one
+                logger.info("No active log file, trying to get most recent log file")
                 cur.execute("""
                     SELECT 
                         log_file_id, 
@@ -291,24 +294,25 @@ async def get_active_log_file() -> Optional[Dict[str, Any]]:
                     LIMIT 1
                 """)
                 row = cur.fetchone()
-                
+                logger.info(f"Result for most recent log file: {row}")
                 # If we found a log file, set it as active
                 if row:
                     log_file_id = row[0]
+                    logger.info(f"Setting most recent log file as active: {log_file_id}")
                     await set_active_log_file(log_file_id)
-            
             # Close the cursor manually
             cur.close()
-            
             if not row:
+                logger.info("No log files found in database")
                 return None
-                
+            logger.info(f"Returning log file: {row}")
             return {
                 "log_file_id": row[0],
                 "file_name": row[1],
                 "upload_timestamp": row[2]
             }
     except Exception as e:
+        logger = logging.getLogger("database")
         logger.error(f"Error retrieving active log file: {e}")
         raise
 

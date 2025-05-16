@@ -79,6 +79,7 @@ async def get_log_files() -> List[Dict[str, Any]]:
     Raises:
         HTTPException: If database query fails
     """
+    logger.info("GET /logs called")
     try:
         # Query to get log files and count of their log entries
         query = """
@@ -241,6 +242,7 @@ async def get_task(task_id: str = FastApiPath(..., description="The ID of the ta
     Returns:
         JSON response with task status and details
     """
+    logger.info(f"GET /task/{{task_id}} called with task_id={task_id}")
     task_info = get_task_status(task_id)
     
     if not task_info:
@@ -269,6 +271,7 @@ async def get_logs_name() -> List[Dict[str, Any]]:
     Raises:
         HTTPException: If there's an error retrieving data from the database.
     """
+    logger.info("GET /get-logs-name called")
     try:
         log_files = await get_all_log_files()
         return log_files
@@ -297,14 +300,15 @@ async def get_active_log() -> Dict[str, Any]:
     Raises:
         HTTPException: If database query fails
     """
+    logger.info("GET /active-log-file called")
     try:
         active_log = await get_active_log_file()
-        
+        logger.info(f"active_log returned: {active_log}")
         if active_log is None:
+            logger.info("No active log file found, returning nulls")
             return {"log_file_id": None, "file_name": None, "upload_timestamp": None}
-            
+        logger.info(f"Returning active log: {active_log}")
         return active_log
-        
     except Exception as e:
         logger.error(f"Error retrieving active log file: {str(e)}")
         raise HTTPException(
@@ -334,6 +338,7 @@ async def set_active_log(log_file_id: str = FastApiPath(..., description="The ID
         HTTPException 404: If the log file ID is not found
         HTTPException 500: If database error occurs
     """
+    logger.info(f"POST /active-log-file/{{log_file_id}} called with log_file_id={log_file_id}")
     try:
         result = await set_active_log_file(log_file_id)
         

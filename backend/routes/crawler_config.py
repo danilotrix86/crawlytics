@@ -104,6 +104,7 @@ DEFAULT_CRAWLER_PATTERNS = [
     tags=["crawler_config"]
 )
 async def get_crawler_patterns() -> Dict[str, List[str]]:
+    logger.info("GET /crawler-patterns called")
     """
     Get the current list of LLM crawler patterns.
     
@@ -142,6 +143,7 @@ async def get_crawler_patterns() -> Dict[str, List[str]]:
     tags=["crawler_config"]
 )
 async def update_crawler_patterns(patterns: List[str] = Body(..., description="List of LLM crawler patterns")) -> Dict[str, Any]:
+    logger.info(f"POST /crawler-patterns called with {len(patterns)} patterns")
     """
     Update the list of LLM crawler patterns in the crawler_patterns.py file.
     
@@ -235,6 +237,7 @@ async def update_crawler_patterns(patterns: List[str] = Body(..., description="L
     tags=["crawler_config"]
 )
 async def reset_crawler_patterns() -> Dict[str, Any]:
+    logger.info("POST /crawler-patterns/reset called")
     """
     Reset the list of LLM crawler patterns to default values.
     

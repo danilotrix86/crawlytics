@@ -39,3 +39,4 @@ backend/log_ingester/*.profraw
 backend/crawlytics.db-shm
 backend/crawlytics.db-wal
 
+.DS_Store

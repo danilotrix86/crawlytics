@@ -29,12 +29,13 @@ if (typeof window !== 'undefined') {
  */
 const LogFileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [logFileId, setLogFileId] = useState<string | null>(logFileCache.id);
+    const [loading, setLoading] = useState(true);
     
     // Fetch the active log file when the component mounts
     useEffect(() => {
-        // Skip if we already have a recent value
         if (logFileCache.id && Date.now() - logFileCache.timestamp < 30 * 1000) {
             setLogFileId(logFileCache.id);
+            setLoading(false);
             return;
         }
         
@@ -57,12 +58,13 @@ const LogFileProvider: React.FC<{ children: React.ReactNode }> = ({ children }) 
             })
             .catch(error => {
                 console.error('Error fetching active log file:', error);
-                setLogFileId('all'); // Fallback to 'all'
-            });
+                setLogFileId(null);
+            })
+            .finally(() => setLoading(false));
     }, []);
     
     // Show a loading spinner until the log file is loaded
-    if (logFileId === null) {
+    if (loading) {
         return (
             <div className="flex justify-center items-center h-screen">
                 <CardLoadingSpinner />
