@@ -92,6 +92,13 @@ export const getTopIpsQuery = () => `
       ORDER BY COUNT(*) DESC 
       LIMIT 1
     ) as crawler_name,
+    MAX(as_org) as host_org,
+    MAX(country_code) as country_code,
+    CASE
+      WHEN SUM(verification = 'suspicious') > 0 THEN 'suspicious'
+      WHEN SUM(verification = 'verified') > 0 THEN 'verified'
+      WHEN SUM(verification = 'unknown') > 0 THEN 'unknown'
+    END as verification,
     MAX(time) as last_seen
   FROM 
     access_logs a1

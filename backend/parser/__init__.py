@@ -4,35 +4,44 @@ Log parser package for Crawlytics.
 This package provides tools for parsing web server logs and identifying LLM/AI crawlers.
 """
 
-# Import main components
-from .processor import LogProcessor, detect_log_format, chunk_file, process_chunk
-from .log_parsers import ApacheParser, NginxParser, parse_apache_line, parse_nginx_line
-from .crawler_detection import is_llm_crawler, extract_crawler_name
+from .processor import LogProcessor, LogFormat, ProcessingOutput, detect_format, detect_log_format, iter_chunks, process_chunk
+from .log_parsers import (
+    AlbParser, ApacheParser, CaddyJsonParser, NginxParser, W3CParser,
+    make_parser, parse_apache_line, parse_nginx_line,
+)
+from .referrals import AI_SOURCES, detect_ai_referral
+from .crawler_patterns import (
+    CrawlerMatcher,
+    DEFAULT_CRAWLER_PATTERNS,
+    load_patterns,
+    save_patterns,
+    reset_patterns,
+)
 from .parser_base import LogEntry, LogParser
 
-# For backward compatibility, provide original module names as attributes
-from . import crawler_detection as llm_list
-
-# Module exports
 __all__ = [
-    # Main processor
     'LogProcessor',
-    
-    # Parser classes
+    'LogFormat',
+    'ProcessingOutput',
+    'detect_format',
+    'make_parser',
+    'AlbParser',
+    'CaddyJsonParser',
+    'W3CParser',
+    'AI_SOURCES',
+    'detect_ai_referral',
     'ApacheParser',
     'NginxParser',
     'LogParser',
     'LogEntry',
-    
-    # Utility functions
+    'CrawlerMatcher',
+    'DEFAULT_CRAWLER_PATTERNS',
+    'load_patterns',
+    'save_patterns',
+    'reset_patterns',
     'detect_log_format',
     'parse_apache_line',
     'parse_nginx_line',
-    'is_llm_crawler',
-    'extract_crawler_name',
-    'chunk_file',
+    'iter_chunks',
     'process_chunk',
-    
-    # Backward compatibility
-    'llm_list'
-] 
+]

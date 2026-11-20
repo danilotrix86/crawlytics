@@ -19,6 +19,19 @@ DEFAULT_DB_CONFIG = {
     }
 }
 
+# Authorizer action codes allowed on read-only connections
+_READONLY_ACTIONS = {
+    getattr(sqlite3, "SQLITE_SELECT", 21),
+    getattr(sqlite3, "SQLITE_READ", 20),
+    getattr(sqlite3, "SQLITE_FUNCTION", 31),
+    getattr(sqlite3, "SQLITE_RECURSIVE", 33),
+}
+
+
+def _readonly_authorizer(action, arg1, arg2, db_name, trigger):
+    return sqlite3.SQLITE_OK if action in _READONLY_ACTIONS else sqlite3.SQLITE_DENY
+
+
 class Database:
     """
     Database connection manager using SQLite.
@@ -76,6 +89,7 @@ class Database:
         # Store configuration
         self.config = config
         self.connection_cache = {}
+        self.readonly_cache = {}
         
     def get_connection(self):
         """
@@ -120,6 +134,23 @@ class Database:
             
         return self.connection_cache[thread_id]
         
+    def get_readonly_connection(self):
+        """
+        Get a per-thread connection that can only read data.
+
+        A SQLite authorizer rejects every action except reading tables and
+        calling functions, so user-supplied queries can't write, ATTACH other
+        files or change PRAGMAs no matter how they're phrased.
+        """
+        thread_id = threading.get_ident()
+        if thread_id not in self.readonly_cache:
+            conn = sqlite3.connect(self.config["database"], isolation_level=None)
+            conn.execute("PRAGMA query_only = ON")
+            conn.row_factory = sqlite3.Row
+            conn.set_authorizer(_readonly_authorizer)
+            self.readonly_cache[thread_id] = conn
+        return self.readonly_cache[thread_id]
+
     def release_connection(self, conn):
         """
         No-op for SQLite as we keep connections per-thread.
@@ -133,9 +164,10 @@ class Database:
         """
         Close all connections in the cache.
         """
-        for conn in self.connection_cache.values():
+        for conn in list(self.connection_cache.values()) + list(self.readonly_cache.values()):
             conn.close()
         self.connection_cache.clear()
+        self.readonly_cache.clear()
 
 # Function to get a database connection
 def get_connection(**kwargs):

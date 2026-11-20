@@ -1,7 +1,14 @@
-import io
-import sqlite3
+import logging
 from datetime import datetime
 from .db import DBConnection
+
+logger = logging.getLogger("log_writer")
+
+
+def _as_text(value):
+    """SQLite can't bind UUID objects; store them as text."""
+    return None if value is None else str(value)
+
 
 class LogWriter:
     """
@@ -22,7 +29,7 @@ class LogWriter:
             "errors": 0
         }
     
-    def insert_log_file(self, log_file_id, file_name, set_as_active=False):
+    def insert_log_file(self, log_file_id, file_name, set_as_active=False, stats=None):
         """
         Insert a new record into the log_files table.
         
@@ -43,13 +50,17 @@ class LogWriter:
                     cursor.execute("UPDATE log_files SET in_use = 0")
                 
                 # Insert the new log file with in_use flag
+                stats = stats or {}
                 cursor.execute(
-                    "INSERT OR IGNORE INTO log_files (log_file_id, file_name, in_use) VALUES (?, ?, ?)",
-                    (log_file_id, file_name, 1 if set_as_active else 0)
+                    "INSERT OR IGNORE INTO log_files "
+                    "(log_file_id, file_name, in_use, log_format, total_lines, parsed_lines, content_hash) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (log_file_id, file_name, 1 if set_as_active else 0, stats.get("log_format"),
+                     stats.get("total_lines"), stats.get("parsed_lines"), stats.get("content_hash"))
                 )
                 return True
         except Exception as e:
-            print(f"Error inserting log file record: {e}")
+            logger.error(f"Error inserting log file record: {e}")
             return False
         
     def insert_logs(self, logs, log_file_id=None, batch_size=1000):
@@ -83,7 +94,7 @@ class LogWriter:
                 self.stats["rows_inserted"] += inserted
             except Exception as e:
                 self.stats["errors"] += len(batch)
-                print(f"Error inserting batch: {e}")
+                logger.error(f"Error inserting batch: {e}")
                 
         return self.stats
         
@@ -104,7 +115,7 @@ class LogWriter:
             with DBConnection(**self.db_config) as conn:
                 return self._insert_logs(conn, logs)
         except Exception as e:
-            print(f"Batch insert failed: {e}")
+            logger.error(f"Batch insert failed: {e}")
             # Fall back to single inserts
             return self._insert_logs_one_by_one(logs)
             
@@ -124,9 +135,10 @@ class LogWriter:
         # Prepare the INSERT statement
         query = """
         INSERT INTO access_logs
-            (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id)
+            (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id,
+             country_code, asn, as_org, verification, bytes)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         # Prepare parameters list
@@ -146,8 +158,13 @@ class LogWriter:
                 log.get("user_agent"),
                 log.get("crawler_name"),
                 log.get("referer"),
-                log.get("request_id"),
-                log.get("log_file_id")
+                _as_text(log.get("request_id")),
+                log.get("log_file_id"),
+                log.get("country_code"),
+                log.get("asn"),
+                log.get("as_org"),
+                log.get("verification"),
+                log.get("bytes")
             ))
         
         # Execute batch insert with proper error handling
@@ -155,7 +172,7 @@ class LogWriter:
             cursor.executemany(query, params_list)
             return len(logs)
         except Exception as e:
-            print(f"Executemany failed: {e}")
+            logger.error(f"Executemany failed: {e}")
             # If executemany failed, transaction was rolled back automatically
             # Fall back to individual inserts
             return self._insert_logs_one_by_one(logs)
@@ -176,9 +193,10 @@ class LogWriter:
             # Prepare the INSERT statement
             query = """
             INSERT INTO access_logs
-                (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id)
+                (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id,
+             country_code, asn, as_org, verification, bytes)
             VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
             for log in logs:
@@ -197,11 +215,36 @@ class LogWriter:
                         log.get("user_agent"),
                         log.get("crawler_name"),
                         log.get("referer"),
-                        log.get("request_id"),
-                        log.get("log_file_id")
+                        _as_text(log.get("request_id")),
+                        log.get("log_file_id"),
+                        log.get("country_code"),
+                        log.get("asn"),
+                        log.get("as_org"),
+                        log.get("verification"),
+                        log.get("bytes")
                     ))
                     inserted += 1
                 except Exception as e:
-                    print(f"Error inserting individual log: {e}")
+                    logger.error(f"Error inserting individual log: {e}")
                     
         return inserted 
+
+    def insert_referrals(self, referrals, log_file_id, batch_size=1000):
+        """Insert AI-referred visits. Returns the number of rows inserted."""
+        query = (
+            "INSERT INTO ai_referrals (time, path, status, bytes, assistant, operator, referrer_host, log_file_id) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        )
+        inserted = 0
+        for i in range(0, len(referrals), batch_size):
+            rows = []
+            for r in referrals[i:i + batch_size]:
+                time_val = r.get("time")
+                if isinstance(time_val, datetime):
+                    time_val = time_val.isoformat()
+                rows.append((time_val, r.get("path"), r.get("status"), r.get("bytes"), r.get("assistant"),
+                             r.get("operator"), r.get("referrer_host"), log_file_id))
+            with DBConnection(**self.db_config) as conn:
+                conn.executemany(query, rows)
+            inserted += len(rows)
+        return inserted

@@ -33,16 +33,9 @@ export const LogFileItem: React.FC<LogFileItemProps> = ({
     onSelect,
     onDelete
 }) => {
-    // Custom click handler to force page reload when selecting a log file
+    // Selecting updates the shared selection; every chart refetches for the new file
     const handleLogFileClick = (e: React.MouseEvent<HTMLElement>) => {
-        // Set a cookie to track the selected log file
-        document.cookie = `selectedLogFile=${file.log_file_id}; path=/; max-age=86400`;
-        
-        // Call the original onSelect handler
         onSelect(e, file.log_file_id);
-        
-        // Force a page reload to ensure data is refreshed
-        window.location.reload();
     };
     
     return (

@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import SimpleLogsTable from '../components/tables/SimpleLogsTable';
 import { useLogFileSelection } from '../hooks/useLogFiles/useLogFileSelection';
+import { apiUrl } from '../utils/pythonApiClient';
 
 interface LogsTableProps {
 	className?: string;
@@ -17,7 +18,21 @@ const LogsTable: React.FC<LogsTableProps> = memo(({ className = '' }) => {
 			<title>Crawlytics Logs</title>
 			<meta name="description" content="View and filter detailed access logs" />
 
-			<h1 className="text-3xl font-bold mb-6">Access Logs</h1>
+			<div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+				<h1 className="text-3xl font-bold">Access Logs</h1>
+				<div className="flex gap-2">
+					{(['requests', 'referrals'] as const).map((dataset) => (
+						<a
+							key={dataset}
+							href={apiUrl(`/export/${dataset}.csv${selectedLogId ? `?log_file_id=${encodeURIComponent(selectedLogId)}` : ''}`)}
+							className="px-3 py-2 rounded-md text-sm font-medium border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700"
+							download
+						>
+							⬇ {dataset === 'requests' ? 'Crawler requests' : 'AI referrals'} (CSV)
+						</a>
+					))}
+				</div>
+			</div>
 			
 			<div className="grid grid-cols-1 gap-4 mb-6">
 				<div className="w-full bg-white dark:bg-gray-800 rounded-lg shadow p-4">

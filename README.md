@@ -9,6 +9,15 @@ This project is 100% free and open-source software.
 ## Core Functionality
 
 - **LLM Crawler Detection**: Identifies requests from AI systems in standard server logs
+- **Bot Verification**: Flags spoofed crawlers by checking each IP against the ranges operators publish (OpenAI, Anthropic, Google, Bing, Perplexity, Apple, Common Crawl, DuckDuckGo, Mistral, Ahrefs), their networks, or reverse DNS
+- **Crawler Directory**: Shows who runs each crawler and why it visits: AI training, AI search, user-triggered fetches, search engines or SEO tools
+- **Real Geolocation**: Country and network owner for every IP from an offline GeoIP database
+- **AI Referral Traffic**: Counts the people who arrive from ChatGPT, Perplexity, Gemini, Claude, Copilot and other assistants, and compares it with how much each company crawls you
+- **Robots.txt Audit**: Shows which crawlers fetch pages your robots.txt blocks, separates genuine bots from fakes, tracks llms.txt reads, and generates rules by crawler purpose
+- **Bandwidth per Crawler**: How much data each crawler downloads
+- **Many Log Formats**: Apache, Nginx, Caddy JSON, IIS, Amazon CloudFront and AWS ALB, plain or gzipped
+- **Command Line and Watch Folder**: Import logs from scripts or cron, or let Crawlytics pick up rotated logs automatically
+- **Demo Data and CSV Export**: Try it without your own logs; download any dataset as CSV
 - **Data Visualization**: Provides heatmaps, charts, and geographic maps for traffic analysis
 - **High-Performance Processing**: Efficiently processes large log files using parallel processing
 - **SQL Query Interface**: Supports read-only SQL queries for custom data exploration
@@ -21,7 +30,17 @@ This project is 100% free and open-source software.
 - **Frontend**: React-based dashboard with responsive visualizations
 - **Packaging**: Build scripts for creating standalone executables
 
-## Setup Instructions
+## Quick Start with Docker
+
+```
+git clone https://github.com/danilotrix86/crawlytics.git
+cd crawlytics
+docker compose up -d
+```
+
+Then open http://localhost:8000. Imported data and your crawler patterns are kept in the `crawlytics-data` volume.
+
+## Setup Instructions (without Docker)
 
 1. **Clone repository**:
    ```
@@ -101,35 +120,100 @@ cp -R fe/dist/* backend/react/
 
 ## Customizing LLM Crawler Detection
 
-You can customize which LLM crawlers are detected by editing the crawler patterns list in `backend/parser/llm_list.py`. This allows you to:
+Open **Settings** in the app to add, remove or reset the crawler patterns. Each pattern is matched case-insensitively as a substring of the user agent; when several match, the longest wins (so `Applebot-Extended` isn't counted as `Applebot`).
 
-- Add new LLM crawler user agent patterns as they emerge
-- Remove patterns you don't want to track
-- Modify existing patterns to improve detection accuracy
+Your list is saved as JSON in `backend/data/crawler_patterns.json` (set `CRAWLYTICS_PATTERNS_PATH` to store it elsewhere). The built-in defaults live in `backend/parser/crawler_patterns.py`.
 
-Example of the crawler patterns list:
-```python
-LLM_CRAWLER_PATTERNS = [
-    # OpenAI
-    "GPTBot",
-    "ChatGPT-User",
-    "OAI-SearchBot",
+Update the patterns before importing logs: detection runs at import time.
 
-    # Anthropic
-    "ClaudeBot",
-    "Claude-Web",
-    "Anthropic-AI",
-    
-    # Google
-    "googlebot",
-    "Google-Extended",
-    
-    # Add your custom patterns here
-    "Your-Custom-LLM-Crawler",
-]
+## Bot Verification and Geolocation
+
+Every imported request gets a verdict:
+
+| Verdict | Meaning |
+|---|---|
+| Verified | The IP is in the operator's published IP list, inside its network (ASN), or passes forward-confirmed reverse DNS |
+| Suspicious | The operator publishes a way to check and the IP failed it. Usually a spoofed user agent |
+| Unverifiable | The operator publishes no way to check (e.g. Bytespider), or the lists couldn't be downloaded |
+
+Operators rotate their IPs, so Crawlytics keeps every version of each list it has downloaded and checks against all of them. Logs older than your first run can still be flagged by mistake when an IP has since been retired.
+
+Who runs each crawler, its purpose and how to verify it are defined in [`backend/enrichment/crawlers.json`](backend/enrichment/crawlers.json). Pull requests that add crawlers are welcome.
+
+IP lists are cached for a day in `backend/data/ip_ranges`. Country and network data come from the free [DB-IP Lite](https://db-ip.com) databases (CC BY 4.0), downloaded to `backend/data/geoip` on first use and refreshed monthly. To use MaxMind instead, put `GeoLite2-Country.mmdb` and `GeoLite2-ASN.mmdb` in that folder.
+
+Logs imported with an older version show a **Check now** button that verifies and geolocates them.
+
+## Supported Log Files
+
+The format is detected automatically. Files can be plain or gzip-compressed (`.gz`).
+
+| Format | Notes |
+|---|---|
+| Apache / Nginx combined | The default `combined` format; an Nginx request id at the end of the line is kept |
+| Caddy | JSON access logs |
+| W3C extended | IIS and Amazon CloudFront standard logs (reads the `#Fields` header) |
+| AWS ALB | Application Load Balancer access logs |
+
+Only crawler requests are stored in full. Visits referred by AI assistants are stored without IP address or user agent, and other human traffic is only counted.
+
+No logs at hand? On the Upload page, **Load demo data** imports 30 days of generated traffic for a fictional site.
+
+## AI Referrals
+
+Crawlytics recognises visits whose Referer is an AI assistant (ChatGPT, Perplexity, Gemini, Claude, Copilot, Le Chat, DeepSeek, Meta AI, Grok and others) or that carry ChatGPT's `utm_source=chatgpt.com` tag. The AI Referrals page shows them over time, the pages people land on, and how many requests each company's AI crawlers made for every visit its assistant sent back.
+
+## Robots.txt Audit
+
+Download your robots.txt from your site or paste it in. Crawlytics checks every crawler request against it (RFC 9309, including `*` and `$` wildcards) and reports:
+
+- crawlers whose **verified** requests fetched blocked pages
+- blocked pages fetched by bots faking a crawler's user agent, which robots.txt can't stop
+- user-triggered fetchers (e.g. ChatGPT-User), shown separately because several operators say robots.txt doesn't apply to them
+- which crawlers read `robots.txt` and `llms.txt`
+
+The generator writes robots.txt rules for the categories you choose (for example, block AI training but allow AI search), plus an nginx rule for crawlers that ignore robots.txt.
+
+## Command Line
+
+```
+cd backend
+python cli.py ingest /var/log/nginx/access.log.1 /var/log/nginx/access.log.2.gz
+python cli.py watch /var/log/nginx --pattern "access.log.*"
+python cli.py enrich
 ```
 
-Make these changes before processing log files to ensure they're detected correctly.
+`watch` imports each file once, after it has stopped changing, so point it at rotated logs. Use `--once` to run a single scan from cron. With Docker: `docker compose run --rm -v /var/log/nginx:/logs:ro crawlytics python cli.py ingest /logs/access.log.1`.
+
+## Export
+
+The Logs Table page has buttons to download crawler requests and AI referrals as CSV, also available at `/api/export/requests.csv` and `/api/export/referrals.csv` (add `?log_file_id=` to limit to one file).
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `8000` | Port used by `run_app.py` |
+| `DB_PATH` | `crawlytics.db` | SQLite database location |
+| `CRAWLYTICS_PATTERNS_PATH` | `backend/data/crawler_patterns.json` | Saved crawler pattern list |
+| `CRAWLYTICS_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Host names the server answers to; add your domain when deploying |
+| `CRAWLYTICS_CORS_ORIGINS` | the local app and Vite dev server | Extra origins allowed to call the API |
+| `PRODUCTION` | off | Binds to `0.0.0.0` and disables the API docs |
+| `CRAWLYTICS_DATA_DIR` | `backend/data` (or the database's folder) | Where IP lists and GeoIP databases are stored |
+| `CRAWLYTICS_OFFLINE` | off | Never download anything; use only cached or user-provided files |
+| `CRAWLYTICS_RDNS` | on | Set to `0` to skip reverse DNS checks |
+
+Crawlytics has no authentication. Keep it on localhost or put it behind an authenticating reverse proxy.
+
+## Running Tests
+
+```
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest tests
+```
+
+GitHub Actions runs the backend tests, the frontend lint and build, and a Docker build on every push and pull request.
 
 ## Screenshots
 
@@ -232,7 +316,7 @@ The sidebar navigation provides quick access to:
 ## Contact
 
 For questions, feature requests, or technical support, please:
-- [Open an issue](https://github.com/danilotrix86/crawlitycs/issues) on GitHub (preferred)
+- [Open an issue](https://github.com/danilotrix86/crawlytics/issues) on GitHub (preferred)
 - Send an email to the maintainer with "CRAWLYTICS" in the subject line: danilo.vaccalluzzo@gmail.com
 
 ## License

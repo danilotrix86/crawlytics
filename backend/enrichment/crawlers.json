@@ -1,0 +1,83 @@
+{
+  "_comment": "Who runs each crawler, why it visits, and how to verify it. Keys match crawler patterns case-insensitively. Categories: training, ai_search, user_action, search_engine, seo, other.",
+  "verification_sources": {
+    "openai_gptbot": "https://openai.com/gptbot.json",
+    "openai_searchbot": "https://openai.com/searchbot.json",
+    "openai_chatgpt_user": "https://openai.com/chatgpt-user.json",
+    "anthropic": "https://claude.com/crawling/bots.json",
+    "google_common": "https://developers.google.com/static/crawling/ipranges/common-crawlers.json",
+    "google_special": "https://developers.google.com/static/crawling/ipranges/special-crawlers.json",
+    "google_user_triggered": "https://developers.google.com/static/crawling/ipranges/user-triggered-fetchers.json",
+    "google_user_triggered_google": "https://developers.google.com/static/crawling/ipranges/user-triggered-fetchers-google.json",
+    "bing": "https://www.bing.com/toolbox/bingbot.json",
+    "perplexity_bot": "https://www.perplexity.ai/perplexitybot.json",
+    "perplexity_user": "https://www.perplexity.ai/perplexity-user.json",
+    "apple": "https://search.developer.apple.com/applebot.json",
+    "common_crawl": "https://index.commoncrawl.org/ccbot.json",
+    "duckduckgo": "https://duckduckgo.com/duckduckbot.json",
+    "mistral": "https://mistral.ai/mistralai-user-ips.json",
+    "ahrefs": "https://api.ahrefs.com/v3/public/crawler-ip-ranges"
+  },
+  "crawlers": {
+    "GPTBot": {"operator": "OpenAI", "category": "training", "description": "Collects public web content to train OpenAI models.", "docs_url": "https://platform.openai.com/docs/bots", "ip_ranges": ["openai_gptbot"]},
+    "OAI-SearchBot": {"operator": "OpenAI", "category": "ai_search", "description": "Indexes pages so they can appear in ChatGPT search results.", "docs_url": "https://platform.openai.com/docs/bots", "ip_ranges": ["openai_searchbot"]},
+    "ChatGPT-User": {"operator": "OpenAI", "category": "user_action", "description": "Fetches a page because a ChatGPT user asked about it.", "docs_url": "https://platform.openai.com/docs/bots", "ip_ranges": ["openai_chatgpt_user"]},
+
+    "ClaudeBot": {"operator": "Anthropic", "category": "training", "description": "Collects public web content to train Claude models.", "docs_url": "https://support.claude.com/en/articles/8896518", "ip_ranges": ["anthropic"]},
+    "Claude-SearchBot": {"operator": "Anthropic", "category": "ai_search", "description": "Indexes pages to improve Claude's search results.", "docs_url": "https://support.claude.com/en/articles/8896518", "ip_ranges": ["anthropic"]},
+    "Claude-User": {"operator": "Anthropic", "category": "user_action", "description": "Fetches a page because a Claude user asked about it.", "docs_url": "https://support.claude.com/en/articles/8896518", "ip_ranges": ["anthropic"]},
+    "Claude-Web": {"operator": "Anthropic", "category": "training", "description": "Deprecated Anthropic crawler token."},
+    "Anthropic-AI": {"operator": "Anthropic", "category": "training", "description": "Deprecated Anthropic crawler token."},
+    "Anthropic-AI-Crawler": {"operator": "Anthropic", "category": "training", "description": "Deprecated Anthropic crawler token."},
+
+    "Googlebot": {"operator": "Google", "category": "search_engine", "description": "Google Search crawler. Content may also be used by AI Overviews.", "docs_url": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers", "ip_ranges": ["google_common", "google_special", "google_user_triggered", "google_user_triggered_google"], "rdns": ["googlebot.com", "google.com", "googleusercontent.com"]},
+    "Google-Extended": {"operator": "Google", "category": "training", "description": "robots.txt token controlling use of content for Gemini training; requests come from Googlebot.", "docs_url": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers#google-extended", "ip_ranges": ["google_common"]},
+    "GoogleOther": {"operator": "Google", "category": "other", "description": "Generic Google crawler used by product teams, including research and development.", "docs_url": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers", "ip_ranges": ["google_common", "google_special"], "rdns": ["googlebot.com", "google.com"]},
+    "Google-CloudVertexBot": {"operator": "Google", "category": "user_action", "description": "Fetches sites for Vertex AI agents built by Google Cloud customers.", "docs_url": "https://developers.google.com/search/docs/crawling-indexing/google-special-case-crawlers", "ip_ranges": ["google_special", "google_user_triggered"]},
+    "Google-InspectionTool": {"operator": "Google", "category": "search_engine", "description": "Search Console URL inspection and Rich Results Test.", "docs_url": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers", "ip_ranges": ["google_common", "google_special"], "rdns": ["googlebot.com", "google.com"]},
+
+    "bingbot": {"operator": "Microsoft", "category": "search_engine", "description": "Bing Search crawler; also grounds Copilot answers.", "docs_url": "https://www.bing.com/webmasters/help/which-crawlers-does-bing-use-8c184ec0", "ip_ranges": ["bing"], "rdns": ["search.msn.com"]},
+
+    "PerplexityBot": {"operator": "Perplexity", "category": "ai_search", "description": "Indexes pages for Perplexity search answers.", "docs_url": "https://docs.perplexity.ai/guides/bots", "ip_ranges": ["perplexity_bot"]},
+    "Perplexity-User": {"operator": "Perplexity", "category": "user_action", "description": "Fetches a page because a Perplexity user asked about it.", "docs_url": "https://docs.perplexity.ai/guides/bots", "ip_ranges": ["perplexity_user"]},
+
+    "Applebot": {"operator": "Apple", "category": "search_engine", "description": "Powers Siri and Spotlight search.", "docs_url": "https://support.apple.com/en-us/119829", "ip_ranges": ["apple"], "rdns": ["applebot.apple.com"]},
+    "Applebot-Extended": {"operator": "Apple", "category": "training", "description": "robots.txt token controlling use of Applebot-crawled content for Apple Intelligence training.", "docs_url": "https://support.apple.com/en-us/119829", "ip_ranges": ["apple"], "rdns": ["applebot.apple.com"]},
+
+    "Amazonbot": {"operator": "Amazon", "category": "ai_search", "description": "Improves Amazon services such as Alexa answers; may be used for model training.", "docs_url": "https://developer.amazon.com/amazonbot", "rdns": ["crawl.amazonbot.amazon"]},
+
+    "FacebookBot": {"operator": "Meta", "category": "training", "description": "Crawls public pages to improve Meta's language and speech models.", "docs_url": "https://developers.facebook.com/docs/sharing/bot", "asns": [32934]},
+    "Meta-ExternalAgent": {"operator": "Meta", "category": "training", "description": "Collects content to train Meta AI models and index it.", "docs_url": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers", "asns": [32934]},
+    "Meta-ExternalFetcher": {"operator": "Meta", "category": "user_action", "description": "Fetches a page because a Meta AI user asked about it.", "docs_url": "https://developers.facebook.com/docs/sharing/webmasters/web-crawlers", "asns": [32934]},
+    "Meta AI": {"operator": "Meta", "category": "user_action", "description": "Meta AI assistant fetcher.", "asns": [32934]},
+    "LLaMA-Bot": {"operator": "Meta", "category": "training", "description": "Unofficial or legacy Meta LLaMA crawler name."},
+    "MetaGPT": {"operator": "Unknown", "category": "other", "description": "Open-source agent framework user agent, not an official OpenAI or Meta crawler."},
+
+    "CCBot": {"operator": "Common Crawl", "category": "training", "description": "Builds the open Common Crawl dataset, widely used to train LLMs.", "docs_url": "https://commoncrawl.org/ccbot", "ip_ranges": ["common_crawl"], "rdns": ["crawl.commoncrawl.org"]},
+    "Bytespider": {"operator": "ByteDance", "category": "training", "description": "ByteDance crawler; content is used to train models such as Doubao."},
+    "cohere-ai": {"operator": "Cohere", "category": "user_action", "description": "Fetches pages for Cohere chat responses."},
+    "CohereBot": {"operator": "Cohere", "category": "training", "description": "Cohere crawler."},
+    "cohere-training-data-crawler": {"operator": "Cohere", "category": "training", "description": "Collects content to train Cohere models."},
+    "AI2Bot": {"operator": "Allen Institute for AI", "category": "training", "description": "Collects content to train open language models.", "docs_url": "https://allenai.org/crawler"},
+    "AI2Bot-Dolma": {"operator": "Allen Institute for AI", "category": "training", "description": "Builds the open Dolma training dataset.", "docs_url": "https://allenai.org/crawler"},
+    "MistralAI-User": {"operator": "Mistral AI", "category": "user_action", "description": "Fetches a page because a Le Chat user asked about it.", "docs_url": "https://docs.mistral.ai/robots", "ip_ranges": ["mistral"]},
+    "DuckDuckBot": {"operator": "DuckDuckGo", "category": "search_engine", "description": "DuckDuckGo search crawler.", "docs_url": "https://duckduckgo.com/duckduckgo-help-pages/results/duckduckbot", "ip_ranges": ["duckduckgo"]},
+    "DuckAssistBot": {"operator": "DuckDuckGo", "category": "ai_search", "description": "Fetches pages to write DuckAssist AI answers.", "docs_url": "https://duckduckgo.com/duckduckgo-help-pages/results/duckassistbot"},
+    "Petalbot": {"operator": "Huawei", "category": "search_engine", "description": "Petal Search crawler.", "rdns": ["petalsearch.com"]},
+    "PanguBot": {"operator": "Huawei", "category": "training", "description": "Collects content to train Huawei PanGu models."},
+    "Youbot": {"operator": "You.com", "category": "ai_search", "description": "Indexes pages for You.com AI search."},
+    "Diffbot": {"operator": "Diffbot", "category": "training", "description": "Extracts structured data for Diffbot's knowledge graph and AI products."},
+    "Omgili": {"operator": "Webz.io", "category": "training", "description": "Webz.io crawler; data is sold, including for AI training."},
+    "Omgilibot": {"operator": "Webz.io", "category": "training", "description": "Webz.io crawler; data is sold, including for AI training."},
+    "webzio-extended": {"operator": "Webz.io", "category": "training", "description": "robots.txt token controlling Webz.io data use for AI training."},
+    "Kangaroo Bot": {"operator": "Kangaroo LLM", "category": "training", "description": "Collects content to train Kangaroo LLM."},
+    "img2dataset": {"operator": "Open source", "category": "training", "description": "Tool that downloads images in bulk to build training datasets."},
+    "Sentibot": {"operator": "SentiOne", "category": "other", "description": "Social listening and brand monitoring crawler."},
+    "Meltwater": {"operator": "Meltwater", "category": "other", "description": "Media monitoring crawler."},
+    "Seekr": {"operator": "Seekr", "category": "other", "description": "Content evaluation for AI and advertising."},
+    "peer39_crawler": {"operator": "Peer39", "category": "other", "description": "Contextual advertising classification."},
+    "Scrapy": {"operator": "Open source", "category": "other", "description": "Default user agent of the Scrapy scraping framework; anyone can use it."},
+    "SemrushBot-OCOB": {"operator": "Semrush", "category": "seo", "description": "Semrush content tools crawler."},
+    "AhrefsBot": {"operator": "Ahrefs", "category": "seo", "description": "Ahrefs SEO index; also powers Ahrefs' AI features.", "docs_url": "https://ahrefs.com/robot", "ip_ranges": ["ahrefs"], "rdns": ["ahrefs.com", "ahrefs.net"]}
+  }
+}

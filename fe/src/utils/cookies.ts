@@ -1,184 +1,89 @@
 /**
- * Utility functions for cookie management
+ * Cookie helpers, plus the single source of truth for the selected log file.
+ *
+ * The selected log file is stored in the database (log_files.in_use) so it
+ * survives reloads. In the browser it lives in one in-memory store, loaded
+ * once at startup by LogFileProvider. Reads are synchronous and always
+ * current; writes update the store immediately, notify subscribers (which
+ * re-renders the app with the new LogFileContext value) and persist to the API.
+ *
+ * getCookie/setCookie('selected_log_file') are kept as aliases so existing
+ * components keep working.
  */
-
 import { pythonApiFetch } from './pythonApiClient';
 
-// Import logFileCache from App to avoid circular dependency
-// We access it directly from window for simplicity
-declare global {
-    interface Window {
-        __logFileCache?: {
-            id: string | null;
-            timestamp: number;
-        };
+const SELECTED_LOG_FILE = 'selected_log_file';
+
+let activeLogFileId: string | null = null;
+const listeners = new Set<(id: string | null) => void>();
+
+/** Load the selected log file from the database. Called once by LogFileProvider. */
+export async function initActiveLogFile(): Promise<string | null> {
+    try {
+        const response = await pythonApiFetch<{ log_file_id: string | null }>('/active-log-file');
+        activeLogFileId = response.log_file_id;
+    } catch (error) {
+        console.error('Error loading the active log file:', error);
+        activeLogFileId = null;
+    }
+    return activeLogFileId;
+}
+
+/** Subscribe to selection changes. Returns an unsubscribe function. */
+export function subscribeActiveLogFile(listener: (id: string | null) => void): () => void {
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+}
+
+/** The currently selected log file id */
+export function getActiveLogFileId(): string | null {
+    return activeLogFileId;
+}
+
+/** Select a log file: updates the app immediately and saves the choice in the database */
+export function setActiveLogFileId(logFileId: string | null, persist = true): void {
+    if (logFileId === activeLogFileId) return;
+    activeLogFileId = logFileId;
+    listeners.forEach((listener) => listener(logFileId));
+    if (persist && logFileId) {
+        pythonApiFetch(`/active-log-file/${encodeURIComponent(logFileId)}`, { method: 'POST' }).catch((error) =>
+            console.error('Error saving the active log file:', error)
+        );
     }
 }
 
 /**
- * Get a cookie value by name
- * 
- * For selected_log_file cookie, this will retrieve the active log file from database
+ * Get a cookie value by name. 'selected_log_file' reads the selected log file.
  */
 export function getCookie(name: string): string | null {
-    // For the log file cookie, use the centralized context value if available
-    if (name === 'selected_log_file') {
-        // Check global cache first
-        if (window.__logFileCache?.id && 
-            Date.now() - window.__logFileCache.timestamp < 30 * 1000) {
-            return window.__logFileCache.id;
-        }
-        
-        // If there's no global cache, fall back to the database API
-        // This should rarely happen now with the LogFileProvider
-        return getActiveLogFileId();
+    if (name === SELECTED_LOG_FILE) {
+        return activeLogFileId;
     }
-
-    // For other cookies, use the standard document.cookie approach
     const cookieValue = document.cookie
         .split('; ')
-        .find(row => row.startsWith(`${name}=`))
+        .find((row) => row.startsWith(`${name}=`))
         ?.split('=')[1];
-
     return cookieValue ? decodeURIComponent(cookieValue) : null;
 }
 
 /**
- * Set a cookie with specified name, value and max age
- * 
- * For selected_log_file cookie, this will set the active log file in database
+ * Set a cookie. 'selected_log_file' selects a log file instead.
  */
 export function setCookie(name: string, value: string, maxAgeInSeconds: number): void {
-    // For the log file cookie, use the database API
-    if (name === 'selected_log_file') {
-        // Also update global cache
-        if (window.__logFileCache) {
-            window.__logFileCache.id = value;
-            window.__logFileCache.timestamp = Date.now();
-        }
-        
-        // Set the active log file
+    if (name === SELECTED_LOG_FILE) {
         setActiveLogFileId(value);
         return;
     }
-
-    // For other cookies, use the standard document.cookie approach
     document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAgeInSeconds}; path=/; SameSite=Lax`;
 }
 
 /**
- * Delete a cookie by name
- * 
- * For selected_log_file cookie, this is a no-op as we don't want to clear the active log file
+ * Delete a cookie. For 'selected_log_file' this is a no-op: the selection is
+ * cleared by the log file list when the selected file no longer exists.
  */
 export function deleteCookie(name: string): void {
-    // For the log file cookie, we don't truly delete, we just ignore this call
-    if (name === 'selected_log_file') {
+    if (name === SELECTED_LOG_FILE) {
         return;
     }
-
-    // For other cookies, use the standard document.cookie approach
     document.cookie = `${name}=; max-age=0; path=/; SameSite=Lax`;
 }
-
-/**
- * Helper function to get the active log file ID from the database
- */
-async function getActiveLogFileFromApi(): Promise<{log_file_id: string | null}> {
-    try {
-        const response = await pythonApiFetch<{log_file_id: string | null}>('/active-log-file');
-        return response;
-    } catch (error) {
-        console.error('Error getting active log file:', error);
-        return { log_file_id: null };
-    }
-}
-
-/**
- * Cache for the active log file ID to avoid excessive API calls
- */
-let activeLogFileCache: {
-    logFileId: string | null;
-    timestamp: number;
-    fetchPromise: Promise<{log_file_id: string | null}> | null;
-} = {
-    logFileId: null,
-    timestamp: 0,
-    fetchPromise: null
-};
-
-/**
- * Cache timeout in milliseconds (30 seconds)
- */
-const CACHE_TIMEOUT = 30 * 1000;
-
-/**
- * Get the active log file ID from the database with caching
- * This uses better caching to reduce API calls
- */
-export function getActiveLogFileId(): string | null {
-    const now = Date.now();
-    
-    // If cache is valid and we have a log file ID, return it immediately
-    if ((now - activeLogFileCache.timestamp) < CACHE_TIMEOUT) {
-        return activeLogFileCache.logFileId;
-    }
-    
-    // If no fetch is in progress, start one
-    if (!activeLogFileCache.fetchPromise) {
-        // Start a new fetch
-        activeLogFileCache.fetchPromise = getActiveLogFileFromApi();
-        
-        // Process the promise
-        activeLogFileCache.fetchPromise.then(response => {
-            // Update the cache
-            activeLogFileCache = {
-                logFileId: response.log_file_id,
-                timestamp: Date.now(),
-                fetchPromise: null // Clear the promise
-            };
-        }).catch(error => {
-            console.error('Error getting active log file:', error);
-            // On error, invalidate the cache but set a timestamp to avoid hammering the API
-            activeLogFileCache = {
-                logFileId: activeLogFileCache.logFileId, // Keep the old value
-                timestamp: Date.now(),
-                fetchPromise: null
-            };
-        });
-    }
-    
-    // Return the current value while the fetch is happening
-    return activeLogFileCache.logFileId;
-}
-
-/**
- * Set the active log file ID in the database
- */
-export function setActiveLogFileId(logFileId: string): void {
-    // Cancel any pending fetch
-    if (activeLogFileCache.fetchPromise) {
-        // We can't truly cancel the request, but we can ignore the result
-        // by setting a new cache immediately
-    }
-    
-    // Update the cache immediately for better UX
-    activeLogFileCache = {
-        logFileId,
-        timestamp: Date.now(),
-        fetchPromise: null
-    };
-
-    // Update the database
-    pythonApiFetch(`/active-log-file/${logFileId}`, {
-        method: 'POST'
-    }).catch(error => {
-        console.error('Error setting active log file:', error);
-        // If there's an error, invalidate the cache
-        activeLogFileCache = {
-            logFileId: null,
-            timestamp: 0,
-            fetchPromise: null
-        };
-    });
-} 

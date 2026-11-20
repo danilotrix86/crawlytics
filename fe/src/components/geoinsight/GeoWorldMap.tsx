@@ -66,10 +66,15 @@ const GeoWorldMapComponent: React.FC<GeoWorldMapProps> = ({ countryHits: externa
   return (
     <div className="border rounded-lg bg-white dark:bg-gray-800 shadow-md p-4 h-full">
       <h2 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">
-        Global Request Distribution
+        Requests by Country
         <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">{getLogFileSuffix(logFileId)}</span>
       </h2>
       
+      <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-4">
+        Country of the crawler's IP address, i.e. where its servers are, not where its users are.
+        IP geolocation by <a className="underline" href="https://db-ip.com" target="_blank" rel="noreferrer">DB-IP</a>.
+      </p>
+
       {/* Legend */}
       <div className="flex items-center gap-4 mb-6 flex-wrap">
         <span className="text-sm text-gray-500 dark:text-gray-400">Request Volume:</span>

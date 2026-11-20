@@ -8,6 +8,8 @@ import LogsTable from '../pages/LogsTable';
 import GeographicInsight from '../pages/GeographicInsight';
 import Settings from '../pages/Settings';
 import CrawlerBehaviour from '../pages/CrawlerBehaviour';
+import AiReferrals from '../pages/AiReferrals';
+import RobotsAudit from '../pages/RobotsAudit';
 
 // Using React 19 function declaration style without unnecessary props
 const AppRoutes = () => (
@@ -19,6 +21,8 @@ const AppRoutes = () => (
 			<Route path="/traffic-insight" element={<TrafficInsight />} />
 			<Route path="/geographic-insight" element={<GeographicInsight />} />
 			<Route path="/crawler-behaviour" element={<CrawlerBehaviour />} />
+			<Route path="/ai-referrals" element={<AiReferrals />} />
+			<Route path="/robots" element={<RobotsAudit />} />
 			<Route path="/logs" element={<LogsTable />} />
 			<Route path="/settings" element={<Settings />} />
 			<Route path="/" element={<Navigate to="/dashboard" replace />} />

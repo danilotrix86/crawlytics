@@ -1,0 +1,16 @@
+.git
+.github
+.cursor
+.vscode
+**/.DS_Store
+**/__pycache__
+**/*.pyc
+backend/venv
+backend/data
+backend/*.db*
+backend/*.log
+backend/build
+backend/dist
+fe/node_modules
+fe/dist
+screenshots

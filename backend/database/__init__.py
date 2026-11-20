@@ -4,6 +4,7 @@ from .init_db import init_database, create_all_indexes
 
 import logging
 import re
+import sqlite3
 from typing import List, Dict, Any, Optional
 
 logger = logging.getLogger("database")
@@ -47,9 +48,6 @@ async def execute_sql_query(query: str, params: Optional[List[Any]] = None, limi
         query += f" LIMIT {limit}"
         
     try:
-        # Import database connection within the function to avoid circular imports
-        from .db import DBConnection
-        
         # Fix table names - replace "logs" with "access_logs" if needed
         query = re.sub(
             r'\blogs\b',
@@ -122,47 +120,24 @@ async def execute_sql_query(query: str, params: Optional[List[Any]] = None, limi
             flags=re.IGNORECASE
         )
         
-        with DBConnection() as conn:
-            # Create a cursor (SQLite doesn't support cursor as context manager)
-            cursor = conn.cursor()
-            
-            # Convert $n style placeholders to ? which SQLite expects
-            has_dollar_placeholders = any(f"${i+1}" in query for i in range(len(params)))
-                
-            if has_dollar_placeholders:
-                # Replace $1, $2, etc. with ?
-                modified_query = query
-                for i in range(len(params), 0, -1):  # Go backwards to avoid replacing $1 in $10
-                    modified_query = modified_query.replace(f"${i}", "?")
-                query = modified_query
-            
-            # Replace %s with ? for SQLite if present
-            query = query.replace("%s", "?")
-            
-            # Execute the query with parameters
-            try:
-                cursor.execute(query, params)
-            except Exception as e:
-                logger.error(f"SQL execution error: {str(e)}")
-                logger.error(f"Query: {query}")
-                logger.error(f"Params: {params}")
-                raise e
-            
-            # Fetch column names
-            columns = [desc[0] for desc in cursor.description]
-            
-            # Fetch all rows and convert to dictionaries
-            records = []
-            for row in cursor.fetchall():
-                record = {}
-                for i, column in enumerate(columns):
-                    record[column] = row[i]
-                records.append(record)
-                
-            # Close the cursor manually
+        # Convert $n style placeholders to ? which SQLite expects
+        for i in range(len(params), 0, -1):  # Go backwards to avoid replacing $1 in $10
+            query = query.replace(f"${i}", "?")
+        query = query.replace("%s", "?")
+
+        conn = Database().get_readonly_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(query, params)
+            columns = [desc[0] for desc in cursor.description or []]
+            return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        except sqlite3.DatabaseError as e:
+            logger.error(f"SQL execution error: {e} | Query: {query}")
+            if "not authorized" in str(e):
+                raise ValueError("Only read-only SELECT queries are allowed") from e
+            raise
+        finally:
             cursor.close()
-            
-            return records
                 
     except Exception as e:
         logger.error(f"Database query error: {str(e)}")
@@ -200,6 +175,8 @@ async def delete_log_file_data(log_file_id: str) -> Dict[str, Any]:
                 (log_file_id,)
             )
             deleted_rows = cur.rowcount
+
+            cur.execute("DELETE FROM ai_referrals WHERE log_file_id = ?", (log_file_id,))
             
             # Delete the log file record
             cur.execute(

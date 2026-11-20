@@ -3,6 +3,7 @@ import { TotalLogsCard } from '../components/dashboard/TotalLogsCard';
 import GeoWorldMap from '../components/geoinsight/GeoWorldMap';
 import TopCountriesTable from '../components/geoinsight/TopCountriesTable';
 import TopIpsTable from '../components/geoinsight/TopIpsTable';
+import EnrichmentBanner from '../components/enrichment/EnrichmentBanner';
 
 interface DashboardProps {
 	className?: string;
@@ -17,6 +18,8 @@ const GeographicInsight: React.FC<DashboardProps> = memo(({ className = '' }) =>
 			<meta name="description" content="View your geographic analytics" />
 
 			<h1 className="text-3xl font-bold mb-6 ">Geographic Insight</h1>
+
+			<EnrichmentBanner />
 			
 			<div className="mb-6">
 				<GeoWorldMap />

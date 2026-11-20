@@ -2,14 +2,18 @@ import os
 import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 from pathlib import Path
 
 # Import routes
 from routes.logs import router as logs_router
 from routes.crawler_config import router as crawler_config_router
+from routes.enrichment import router as enrichment_router
+from routes.robots import router as robots_router
+from routes.demo_export import router as demo_export_router
 
 # Configure logging
 logging.basicConfig(
@@ -36,29 +40,45 @@ app = FastAPI(
     redoc_url=None if production else "/redoc",
 )
 
-# CORS settings based on environment
-origins = ["*"]  # Default for development
-if production:
-    # In production, restrict to specific domains
-    origins = [
-        "http://localhost",
-        "http://localhost:8000",
-        # Add your production domains here
-        # "https://your-production-domain.com"
-    ]
+def _env_list(name: str, default: list) -> list:
+    """Read a comma-separated list from the environment."""
+    value = os.environ.get(name, "")
+    items = [item.strip() for item in value.split(",") if item.strip()]
+    return items or default
 
-# Setup CORS middleware
+# Only pages served by Crawlytics itself (or the Vite dev server) may call the API.
+# A wildcard would let any website open in the user's browser drive the local API.
+port = os.environ.get("PORT", "8000")
+origins = _env_list("CRAWLYTICS_CORS_ORIGINS", [
+    f"http://localhost:{port}",
+    f"http://127.0.0.1:{port}",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+])
+
+# Reject requests whose Host header isn't expected, which blocks DNS-rebinding
+# attacks against the local server. Set CRAWLYTICS_ALLOWED_HOSTS when deploying
+# behind a domain name.
+allowed_hosts = _env_list(
+    "CRAWLYTICS_ALLOWED_HOSTS",
+    ["*"] if production else ["localhost", "127.0.0.1", "[::1]", "testserver"],
+)
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"] if production else ["*"],
-    allow_headers=["Content-Type", "Authorization"] if production else ["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type"],
 )
 
 # Include routers
 app.include_router(logs_router, prefix="/api")
 app.include_router(crawler_config_router, prefix="/api")
+app.include_router(enrichment_router, prefix="/api")
+app.include_router(robots_router, prefix="/api")
+app.include_router(demo_export_router, prefix="/api")
 
 # Define the path to the static files (React build) using pathlib for platform compatibility
 static_files_dir = Path(__file__).parent / "react"
@@ -77,50 +97,31 @@ if logo_dir.exists():
     app.mount("/logo", StaticFiles(directory=str(logo_dir)), name="logo")
     logger.info(f"Mounted logo from: {logo_dir}")
 
-# Serve static files from the root directory
-app.mount("/", StaticFiles(directory=str(static_files_dir), html=True), name="static")
-logger.info(f"Mounted static files from: {static_files_dir}")
-
-# Serve favicon.ico
-@app.get("/favicon.ico", include_in_schema=False)
-async def favicon():
-    favicon_path = static_files_dir / "favicon.ico"
-    if favicon_path.exists():
-        return FileResponse(str(favicon_path))
-    return {"detail": "Not found"}
-
-# Serve vite.svg
-@app.get("/vite.svg", include_in_schema=False)
-async def vite_svg():
-    svg_path = static_files_dir / "vite.svg"
-    if svg_path.exists():
-        return FileResponse(str(svg_path))
-    return {"detail": "Not found"}
-
-# Add a health check endpoint
+# Health check endpoint
 @app.get("/health", tags=["Health"])
 async def health_check():
     return {"status": "ok"}
 
-# Catch-all route to serve index.html for any other routes (for client-side routing)
-@app.get("/{full_path:path}", response_class=HTMLResponse, include_in_schema=False)
+# Serve top-level static files (favicon, images) or fall back to index.html so
+# client-side routes like /logs survive a page refresh.
+@app.get("/{full_path:path}", include_in_schema=False)
 async def serve_react_app(request: Request, full_path: str):
-    # Exclude API routes from catch-all
-    if full_path.startswith("api/"):
-        return {"detail": "Not Found"}
-    
-    # Log the request path at debug level to avoid log spam
-    logger.debug(f"Serving React app for path: {full_path}")
-    
-    # Return the index.html file for all other routes
+    if full_path == "api" or full_path.startswith("api/"):
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    if full_path:
+        candidate = (static_files_dir / full_path).resolve()
+        if candidate.is_file() and static_files_dir in candidate.parents:
+            return FileResponse(str(candidate))
+
     index_path = static_files_dir / "index.html"
     if index_path.exists():
-        return FileResponse(str(index_path))
-    else:
-        logger.error(f"React app index.html not found at: {index_path}")
-    return {"detail": "React app not found"}
+        # Always revalidate the page so browsers pick up new (hashed) bundles after an upgrade
+        return FileResponse(str(index_path), headers={"Cache-Control": "no-cache"})
+    logger.error(f"React app index.html not found at: {index_path}")
+    return JSONResponse({"detail": "React app not found"}, status_code=404)
 
 if __name__ == "__main__":
     # Run uvicorn server directly (for development)
     logger.info("Starting server directly from app.py")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=int(port))

@@ -13,8 +13,9 @@ import { CloudArrowUp, CheckCircle, ExclamationCircle } from 'flowbite-react-ico
 import { useQueryClient } from '@tanstack/react-query';
 import { useFileUploadMutation, useTaskStatusQuery } from '../../hooks/queries/apiQueries';
 import { UploadResponse, TaskStatusResponse } from '../../hooks/queries/types';
-import { setCookie, getCookie } from '../../utils/cookies';
+import { errorMessage } from '../../utils/pythonApiClient';
 import { useNavigate } from 'react-router-dom';
+import { setActiveLogFileId } from '../../utils/cookies';
 
 /**
  * Log file upload component with spinner indicator
@@ -29,6 +30,8 @@ export function LogFileUpload() {
 	const [taskId, setTaskId] = useState<string | null>(null);
 	const [processingComplete, setProcessingComplete] = useState(false);
 	const [taskStartTime, setTaskStartTime] = useState<number | null>(null);
+	// Set when the import finished without producing data (failed, duplicate, or nothing found)
+	const [taskError, setTaskError] = useState<string | null>(null);
 	
 	// 2 minute timeout for task initialization (in milliseconds)
 	const TASK_INIT_TIMEOUT = 120000;
@@ -36,16 +39,7 @@ export function LogFileUpload() {
 	// Use our specialized hook for handling file uploads
 	const uploadMutation = useFileUploadMutation<UploadResponse, File>({
 		onSuccess: (data) => {
-			// Invalidate and refetch logs list query to show the newly added log
-			queryClient.invalidateQueries({ queryKey: ['logFiles'] });
-			
-			// Set the cookie with the newly uploaded log file ID
-			const COOKIE_MAX_AGE = 7 * 24 * 60 * 60; // 7 days in seconds
-			const COOKIE_NAME = 'selected_log_file';
-			
-			// Set the cookie
-			setCookie(COOKIE_NAME, data.log_file_id, COOKIE_MAX_AGE);
-			
+			// Don't select the new log file yet: it only exists once processing succeeds.
 			// Set task ID for polling and record start time
 			setTaskId(data.log_file_id);
 			setTaskStartTime(Date.now());
@@ -54,16 +48,16 @@ export function LogFileUpload() {
 
 	// Use our specialized hook for polling task status
 	const taskStatusQuery = useTaskStatusQuery(taskId, {
-		enabled: !!taskId && !processingComplete,
+		enabled: !!taskId && !processingComplete && !taskError,
 		refetchInterval: 2000, // Poll every 2 seconds
 		retry: 3
 	});
 
 	// Determine current state for UI rendering
-	const isUploading = uploadMutation.isPending || (taskId && !processingComplete);
+	const isUploading = uploadMutation.isPending || (taskId && !processingComplete && !taskError);
 	const isSuccess = processingComplete;
-	const isError = uploadMutation.isError;
-	const error = uploadMutation.error as Error;
+	const isError = uploadMutation.isError || !!taskError;
+	const errorText = taskError ?? errorMessage(uploadMutation.error, 'An error occurred during upload. Please try again.');
 	const taskStatus = taskStatusQuery.data;
 	const uploadResult = processingComplete && taskStatus ? taskStatus : uploadMutation.data;
 
@@ -71,8 +65,19 @@ export function LogFileUpload() {
 	useEffect(() => {
 		const data = taskStatusQuery.data;
 		
+		if (data && ['error', 'duplicate', 'db_init_failed'].includes(data.status)) {
+			setTaskError(data.error || data.issues?.[0] || 'The log file could not be processed.');
+			return;
+		}
+
 		if (data && (data.status === 'complete' || data.status === 'processing_complete')) {
-			// Task is complete
+			if (!data.records_imported && !data.ai_referrals) {
+				// Nothing was saved, so there is no log file to show
+				setTaskError('No crawler requests or AI referrals were found in this file. Check the format is supported and that your crawler patterns match.');
+				return;
+			}
+			// The log file now exists: refresh the list before showing it
+			queryClient.invalidateQueries({ queryKey: ['logFiles'] });
 			setProcessingComplete(true);
 			// Start the countdown for auto-redirect
 			setCountdown(5);
@@ -87,7 +92,7 @@ export function LogFileUpload() {
 			setProcessingComplete(true);
 			setCountdown(5);
 		}
-	}, [taskStatusQuery.data, taskStartTime]);
+	}, [taskStatusQuery.data, taskStartTime, queryClient]);
 
 	// Countdown effect for auto-redirect
 	useEffect(() => {
@@ -100,7 +105,7 @@ export function LogFileUpload() {
 		} else if (countdown === 0 && processingComplete && taskId) {
 			// When countdown reaches zero, redirect
 			// Make absolutely sure cookie is set
-			document.cookie = `selected_log_file=${taskId}; max-age=${7 * 24 * 60 * 60}; path=/`;
+			setActiveLogFileId(taskId);
 			
 			// Use React Router's navigate instead of direct URL manipulation
 			navigate('/dashboard');
@@ -116,6 +121,7 @@ export function LogFileUpload() {
 	const handleUpload = async () => {
 		if (!file) return;
 		// Reset status
+		setTaskError(null);
 		setTaskId(null);
 		setTaskStartTime(null);
 		setProcessingComplete(false);
@@ -125,6 +131,7 @@ export function LogFileUpload() {
 
 	const handleReset = () => {
 		// Reset state
+		setTaskError(null);
 		setFile(null);
 		setTaskId(null);
 		setTaskStartTime(null);
@@ -149,7 +156,7 @@ export function LogFileUpload() {
 		// Make absolutely sure cookie is set
 		if (taskId) {
 			// Set cookie with path explicitly set to root
-			document.cookie = `selected_log_file=${taskId}; max-age=${7 * 24 * 60 * 60}; path=/`;
+			setActiveLogFileId(taskId);
 			
 			// Use React Router's navigate
 			navigate('/dashboard');
@@ -173,10 +180,10 @@ export function LogFileUpload() {
 					id="log-file"
 					onChange={handleFileChange}
 					disabled={isUploading || isSuccess}
-					accept=".log,.txt"
+					accept=".log,.txt,.gz,.json"
 				/>
 				<div className="mt-1 text-sm text-gray-500">
-					Choose a server log file (.log or .txt)
+					Apache, Nginx, Caddy (JSON), IIS, CloudFront or AWS ALB logs, plain or .gz
 				</div>
 				{file && !isUploading && !isSuccess && (
 					<p className="mt-2 text-sm text-gray-500">
@@ -246,10 +253,8 @@ export function LogFileUpload() {
 			{/* Error message */}
 			{isError && (
 				<Alert color="failure" icon={ExclamationCircle} className="mb-4">
-					<h3 className="font-medium">Upload Failed</h3>
-					<p className="mt-1 text-sm">
-						{error?.message || 'An error occurred during upload. Please try again.'}
-					</p>
+					<h3 className="font-medium">{taskError ? 'Import Failed' : 'Upload Failed'}</h3>
+					<p className="mt-1 text-sm">{errorText}</p>
 				</Alert>
 			)}
 

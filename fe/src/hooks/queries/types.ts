@@ -86,6 +86,8 @@ export interface TaskStatusResponse {
 	log_file_id: string;
 	file_size_mb: number;
 	message?: string;
+	error?: string;
+	ai_referrals?: number;
 }
 
 // ===== Query Configuration =====

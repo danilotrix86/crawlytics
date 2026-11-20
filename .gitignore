@@ -41,3 +41,6 @@ backend/crawlytics.db-shm
 backend/crawlytics.db-wal
 
 .DS_Store
+
+# Test caches
+.pytest_cache/

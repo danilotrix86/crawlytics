@@ -1,12 +1,14 @@
 import logging
+import os
+import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, status, HTTPException, Body, Path as FastApiPath, File, UploadFile, Form, BackgroundTasks
-from fastapi.responses import JSONResponse
 
 from models import SQLQueryRequest
 from database import execute_sql_query, delete_log_file_data, get_all_log_files, get_active_log_file, set_active_log_file
 from processor import process_log_file, save_uploaded_file, get_task_status
+from processor.log_task import find_imported_file
 
 # Configure logging
 logger = logging.getLogger("logs_routes")
@@ -173,7 +175,8 @@ async def upload_log(
     background_tasks: BackgroundTasks,
     log_file: UploadFile = File(...),
     save_to_db: Optional[bool] = Form(True),
-    create_indexes: Optional[bool] = Form(True)
+    create_indexes: Optional[bool] = Form(True),
+    allow_duplicate: bool = Form(False)
 ):
     """
     Upload and process a server log file
@@ -189,40 +192,45 @@ async def upload_log(
     """
     logger.info(f"Log file upload received: {log_file.filename}")
     
-    # Generate a task ID
-    task_id = f"task_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(log_file)}"
-    
+    task_id = f"task_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+
     try:
-        # Read and save file content
-        content = await log_file.read()
-        temp_file_path = await save_uploaded_file(content, log_file.filename)
-        
-        # Start processing in background
-        background_tasks.add_task(
-            process_log_file,
-            temp_file_path,
-            task_id,
-            log_file.filename,
-            save_to_db,
-            create_indexes
-        )
-        
-        # Format response to match frontend expectations
-        file_size_mb = len(content) / (1024 * 1024)
-        
-        return {
-            "log_file_id": task_id,  # Using task_id as log_file_id
-            "records_imported": 0,   # Will be processed in background
-            "issues": [],            # No issues yet
-            "file_size_mb": file_size_mb
-        }
-        
+        # Stream the upload to disk instead of reading it all into memory
+        temp_file_path, content_hash = await save_uploaded_file(log_file)
     except Exception as e:
         logger.error(f"Error handling file upload: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing upload: {str(e)}"
+            detail="Error saving the uploaded file"
         )
+
+    existing = None if allow_duplicate else find_imported_file(content_hash)
+    if existing:
+        os.unlink(temp_file_path)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"This file was already imported as {existing['file_name']} "
+                   f"on {existing['upload_timestamp']}. Delete that import first to load it again.",
+        )
+
+    # Parsing runs in a worker thread (process_log_file is sync) so the API stays responsive
+    background_tasks.add_task(
+        process_log_file,
+        temp_file_path,
+        task_id,
+        log_file.filename,
+        save_to_db,
+        create_indexes,
+        content_hash=content_hash,
+        allow_duplicate=allow_duplicate,
+    )
+
+    return {
+        "log_file_id": task_id,
+        "records_imported": 0,
+        "issues": [],
+        "file_size_mb": os.path.getsize(temp_file_path) / (1024 * 1024)
+    }
 
 
 @router.get(

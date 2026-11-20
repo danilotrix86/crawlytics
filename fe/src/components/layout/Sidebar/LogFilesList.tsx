@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useLogFileSelection, LogFile } from '../../../hooks/useLogFiles';
 import { LogFileItem } from './LogFileItem';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
@@ -18,7 +17,6 @@ export const LogFilesList: React.FC = () => {
         deletingLogId
     } = useLogFileSelection();
 
-    const navigate = useNavigate();
     const queryClient = useQueryClient();
 
     // State for managing the confirmation modal
@@ -33,17 +31,14 @@ export const LogFilesList: React.FC = () => {
         );
     }
 
-    // Handler for selecting a file - now using React Router navigation
+    // Selecting a file updates the shared selection; queries keyed on it refetch,
+    // and the user stays on the current page
     const handleSelectFile = (e: React.MouseEvent<HTMLElement>, fileId: string) => {
         e.preventDefault();
         if (selectedLogId !== fileId) {
             selectLogFile(fileId);
-            
-            // Invalidate queries related to the log file to force refetch with new log file ID
-            queryClient.invalidateQueries({ queryKey: ['sql'] });
-            
-            // Navigate to the current page to refresh data without full page reload
-            navigate(window.location.pathname);
+            queryClient.invalidateQueries({ queryKey: ['robotsAudit'] });
+            queryClient.invalidateQueries({ queryKey: ['enrichmentStatus'] });
         }
     };
 
