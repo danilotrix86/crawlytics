@@ -1,8 +1,9 @@
 import logging
+import os
+import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, status, HTTPException, Body, Path as FastApiPath, File, UploadFile, Form, BackgroundTasks
-from fastapi.responses import JSONResponse
 
 from models import SQLQueryRequest
 from database import execute_sql_query, delete_log_file_data, get_all_log_files, get_active_log_file, set_active_log_file
@@ -189,40 +190,34 @@ async def upload_log(
     """
     logger.info(f"Log file upload received: {log_file.filename}")
     
-    # Generate a task ID
-    task_id = f"task_{datetime.now().strftime('%Y%m%d%H%M%S')}_{id(log_file)}"
-    
+    task_id = f"task_{datetime.now().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}"
+
     try:
-        # Read and save file content
-        content = await log_file.read()
-        temp_file_path = await save_uploaded_file(content, log_file.filename)
-        
-        # Start processing in background
-        background_tasks.add_task(
-            process_log_file,
-            temp_file_path,
-            task_id,
-            log_file.filename,
-            save_to_db,
-            create_indexes
-        )
-        
-        # Format response to match frontend expectations
-        file_size_mb = len(content) / (1024 * 1024)
-        
-        return {
-            "log_file_id": task_id,  # Using task_id as log_file_id
-            "records_imported": 0,   # Will be processed in background
-            "issues": [],            # No issues yet
-            "file_size_mb": file_size_mb
-        }
-        
+        # Stream the upload to disk instead of reading it all into memory
+        temp_file_path = await save_uploaded_file(log_file)
     except Exception as e:
         logger.error(f"Error handling file upload: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Error processing upload: {str(e)}"
+            detail="Error saving the uploaded file"
         )
+
+    # Parsing runs in a worker thread (process_log_file is sync) so the API stays responsive
+    background_tasks.add_task(
+        process_log_file,
+        temp_file_path,
+        task_id,
+        log_file.filename,
+        save_to_db,
+        create_indexes
+    )
+
+    return {
+        "log_file_id": task_id,
+        "records_imported": 0,
+        "issues": [],
+        "file_size_mb": os.path.getsize(temp_file_path) / (1024 * 1024)
+    }
 
 
 @router.get(

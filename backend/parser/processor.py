@@ -1,204 +1,149 @@
 """
 Main log processing module with parallel processing capability.
-Provides utilities for handling large log files efficiently.
+Streams the file in chunks so large logs never have to fit in memory.
 """
-import os
+import gzip
 import multiprocessing
-from functools import partial
-import itertools
-from typing import Dict, List, Optional, Tuple, Any, Union
-from pathlib import Path
 import time
+from functools import partial
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
-from .log_parsers import ApacheParser, NginxParser, parse_apache_line, parse_nginx_line
-from .crawler_detection import is_llm_crawler
+from .crawler_patterns import CrawlerMatcher, load_patterns
+from .log_parsers import ApacheParser, NginxParser
+
+
+def _open_text(file_path: Union[str, Path]):
+    """Open a log file as text, transparently handling .gz files."""
+    path = Path(file_path)
+    if path.suffix.lower() == ".gz":
+        return gzip.open(path, "rt", encoding="utf-8", errors="replace")
+    return open(path, "r", encoding="utf-8", errors="replace")
 
 
 def detect_log_format(sample_lines: List[str]) -> Optional[str]:
     """
     Detect whether the log file is in Apache or Nginx format.
-    
-    Args:
-        sample_lines: List of sample log lines to analyze
-        
+
     Returns:
         'apache' or 'nginx' or None if format cannot be determined
     """
-    # Create parsers
     apache_parser = ApacheParser()
     nginx_parser = NginxParser()
-    
+
     for line in sample_lines:
-        # Try each parser and return on first match
         if apache_parser.parse_line(line):
             return 'apache'
         if nginx_parser.parse_line(line):
             return 'nginx'
-            
-    # Could not determine format
     return None
 
 
-def chunk_file(file_path: Union[str, Path], chunk_size: int = 10000) -> List[List[str]]:
-    """
-    Split a file into chunks of lines for parallel processing.
-    
-    Args:
-        file_path: Path to the log file
-        chunk_size: Number of lines per chunk
-        
-    Returns:
-        List of chunks (lists of lines)
-    """
-    chunks = []
-    current_chunk = []
-    
-    with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
-        for i, line in enumerate(f):
-            current_chunk.append(line.strip())
-            if (i + 1) % chunk_size == 0:
-                chunks.append(current_chunk)
-                current_chunk = []
-                
-    # Add the last chunk if it's not empty
-    if current_chunk:
-        chunks.append(current_chunk)
-        
-    return chunks
+def iter_chunks(file_path: Union[str, Path], chunk_size: int = 10000) -> Iterator[List[str]]:
+    """Yield lists of up to chunk_size stripped lines from the file."""
+    chunk: List[str] = []
+    with _open_text(file_path) as f:
+        for line in f:
+            chunk.append(line.strip())
+            if len(chunk) >= chunk_size:
+                yield chunk
+                chunk = []
+    if chunk:
+        yield chunk
 
 
-# Define top-level function for multiprocessing compatibility
-def process_chunk(chunk: List[str], log_format: str) -> List[Dict[str, Any]]:
+def process_chunk(chunk: List[str], log_format: str,
+                  patterns: Optional[Sequence[str]] = None) -> Tuple[int, List[Dict[str, Any]]]:
     """
-    Process a chunk of log lines.
-    
+    Parse a chunk of log lines and keep only requests from known crawlers.
+
     Args:
         chunk: List of log lines
         log_format: 'apache' or 'nginx'
-        
+        patterns: Crawler patterns to match (defaults to the saved list)
+
     Returns:
-        List of parsed log entries from LLM crawlers
+        (number of lines in the chunk, parsed entries from LLM crawlers)
     """
-    # Use function-based approach for better multiprocessing compatibility
-    parser_func = parse_apache_line if log_format == 'apache' else parse_nginx_line
+    parser = ApacheParser() if log_format == 'apache' else NginxParser()
+    matcher = CrawlerMatcher(patterns if patterns is not None else load_patterns())
     results = []
-    
+
     for line in chunk:
-        parsed = parser_func(line)
-        if parsed and parsed.get('user_agent') and is_llm_crawler(parsed['user_agent']):
+        parsed = parser.parse_line(line)
+        if not parsed:
+            continue
+        crawler_name = matcher.match(parsed.get('user_agent'))
+        if crawler_name:
+            parsed['crawler_name'] = crawler_name
             results.append(parsed)
-            
-    return results
+
+    return len(chunk), results
 
 
 class LogProcessor:
     """
-    Main class for processing log files in parallel with optimized performance.
+    Processes log files in parallel, streaming chunks to worker processes.
     """
-    
+
     def __init__(self, file_path: Union[str, Path], num_processes: Optional[int] = None,
-                chunk_size: int = 10000):
-        """
-        Initialize the log processor.
-        
-        Args:
-            file_path: Path to the log file
-            num_processes: Number of processes to use (defaults to CPU count)
-            chunk_size: Number of lines per chunk for parallel processing
-        """
+                 chunk_size: int = 10000, patterns: Optional[Sequence[str]] = None):
         self.file_path = Path(file_path)
         self.num_processes = num_processes or max(1, multiprocessing.cpu_count() - 1)
         self.chunk_size = chunk_size
+        self.patterns = list(patterns) if patterns is not None else load_patterns()
         self.total_lines = 0
         self.llm_matches = 0
-        self.processing_time = 0
-        
+        self.processing_time = 0.0
+
     def detect_format(self, num_lines: int = 100) -> Optional[str]:
-        """
-        Detect the log format by sampling lines from the file.
-        
-        Args:
-            num_lines: Number of lines to sample
-            
-        Returns:
-            'apache' or 'nginx' or None if format cannot be determined
-        """
+        """Detect the log format by sampling lines from the file."""
         sample_lines = []
-        with open(self.file_path, 'r', encoding='utf-8', errors='replace') as f:
+        with _open_text(self.file_path) as f:
             for _ in range(num_lines):
                 line = f.readline()
                 if not line:
                     break
                 sample_lines.append(line.strip())
-                
         return detect_log_format(sample_lines)
-        
+
     def process(self) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
         """
         Process the log file and filter for LLM crawler entries.
-        
+
         Returns:
-            Tuple containing:
-            - List of parsed log entries from LLM crawlers
-            - Dictionary with processing statistics
+            (parsed log entries from LLM crawlers, processing statistics)
         """
         start_time = time.time()
-        
-        # Detect log format
+
         log_format = self.detect_format()
         if not log_format:
-            raise ValueError(f"Could not determine log format for {self.file_path}")
-            
-        # Split file into chunks
-        chunks = chunk_file(self.file_path, self.chunk_size)
-        self.total_lines = sum(len(chunk) for chunk in chunks)
-        
-        # Process chunks in parallel using multiprocessing.Pool for better compatibility
-        process_fn = partial(process_chunk, log_format=log_format)
-        
-        # Use multiprocessing.Pool instead of ProcessPoolExecutor for better pickle compatibility
-        with multiprocessing.Pool(processes=self.num_processes) as pool:
-            results = pool.map(process_fn, chunks)
-            
-        flat_results = list(itertools.chain.from_iterable(results))
+            raise ValueError(f"Could not determine log format for {self.file_path.name}")
+
+        process_fn = partial(process_chunk, log_format=log_format, patterns=self.patterns)
+        chunks = iter_chunks(self.file_path, self.chunk_size)
+        flat_results: List[Dict[str, Any]] = []
+        total_lines = 0
+
+        if self.num_processes == 1:
+            outputs = map(process_fn, chunks)
+            for line_count, results in outputs:
+                total_lines += line_count
+                flat_results.extend(results)
+        else:
+            with multiprocessing.Pool(processes=self.num_processes) as pool:
+                for line_count, results in pool.imap(process_fn, chunks):
+                    total_lines += line_count
+                    flat_results.extend(results)
+
+        self.total_lines = total_lines
         self.llm_matches = len(flat_results)
         self.processing_time = time.time() - start_time
-        
-        # Return results and stats
+
         return flat_results, {
             "total_lines": self.total_lines,
             "llm_matches": self.llm_matches,
             "match_percentage": (self.llm_matches / self.total_lines * 100) if self.total_lines > 0 else 0,
             "processing_time_seconds": self.processing_time,
-            "lines_per_second": self.total_lines / self.processing_time if self.processing_time > 0 else 0
+            "lines_per_second": self.total_lines / self.processing_time if self.processing_time > 0 else 0,
         }
-        
-    def process_sample(self, sample_size: int = 1000) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
-        """
-        Process a sample of the log file for quick analysis.
-        
-        Args:
-            sample_size: Number of lines to sample from the file
-            
-        Returns:
-            Same as process() but for a sample of the file
-        """
-        sample_path = self.file_path.with_suffix('.sample')
-        
-        # Create a sample file
-        with open(self.file_path, 'r', encoding='utf-8', errors='replace') as source:
-            with open(sample_path, 'w', encoding='utf-8') as target:
-                for _ in range(sample_size):
-                    line = source.readline()
-                    if not line:
-                        break
-                    target.write(line)
-        
-        # Create a temporary processor for the sample
-        sample_processor = LogProcessor(sample_path, num_processes=1)
-        results, stats = sample_processor.process()
-        
-        # Clean up the sample file
-        os.remove(sample_path)
-        
-        return results, stats 

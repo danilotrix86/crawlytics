@@ -82,8 +82,9 @@ def main():
         
         # Add production settings
         if production:
+            # A single worker: import task status is kept in memory and SQLite
+            # has a single writer, so extra workers would only cause 404s on polling.
             logger.info("Running in PRODUCTION mode")
-            server_cmd.extend(["--workers", "4"])
         else:
             logger.info(f"Running in DEVELOPMENT mode on http://{host if host != '0.0.0.0' else 'localhost'}:{port}")
             if logger.level <= logging.DEBUG:

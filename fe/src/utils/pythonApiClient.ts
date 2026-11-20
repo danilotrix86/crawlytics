@@ -2,7 +2,10 @@
 
 // Python API client for direct backend calls (bypassing Node proxy)
 
-const PYTHON_API_URL = import.meta.env.VITE_PYTHON_API_URL || 'http://localhost:8000/api';
+// In production the app is served by the backend itself, so a relative URL works
+// on any host/port. During `npm run dev` the Vite server talks to the local backend.
+const PYTHON_API_URL =
+  import.meta.env.VITE_PYTHON_API_URL || (import.meta.env.DEV ? 'http://localhost:8000/api' : '/api');
 
 export class PythonApiError extends Error {
   status: number;

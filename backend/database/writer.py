@@ -1,7 +1,14 @@
-import io
-import sqlite3
+import logging
 from datetime import datetime
 from .db import DBConnection
+
+logger = logging.getLogger("log_writer")
+
+
+def _as_text(value):
+    """SQLite can't bind UUID objects; store them as text."""
+    return None if value is None else str(value)
+
 
 class LogWriter:
     """
@@ -49,7 +56,7 @@ class LogWriter:
                 )
                 return True
         except Exception as e:
-            print(f"Error inserting log file record: {e}")
+            logger.error(f"Error inserting log file record: {e}")
             return False
         
     def insert_logs(self, logs, log_file_id=None, batch_size=1000):
@@ -83,7 +90,7 @@ class LogWriter:
                 self.stats["rows_inserted"] += inserted
             except Exception as e:
                 self.stats["errors"] += len(batch)
-                print(f"Error inserting batch: {e}")
+                logger.error(f"Error inserting batch: {e}")
                 
         return self.stats
         
@@ -104,7 +111,7 @@ class LogWriter:
             with DBConnection(**self.db_config) as conn:
                 return self._insert_logs(conn, logs)
         except Exception as e:
-            print(f"Batch insert failed: {e}")
+            logger.error(f"Batch insert failed: {e}")
             # Fall back to single inserts
             return self._insert_logs_one_by_one(logs)
             
@@ -146,7 +153,7 @@ class LogWriter:
                 log.get("user_agent"),
                 log.get("crawler_name"),
                 log.get("referer"),
-                log.get("request_id"),
+                _as_text(log.get("request_id")),
                 log.get("log_file_id")
             ))
         
@@ -155,7 +162,7 @@ class LogWriter:
             cursor.executemany(query, params_list)
             return len(logs)
         except Exception as e:
-            print(f"Executemany failed: {e}")
+            logger.error(f"Executemany failed: {e}")
             # If executemany failed, transaction was rolled back automatically
             # Fall back to individual inserts
             return self._insert_logs_one_by_one(logs)
@@ -197,11 +204,11 @@ class LogWriter:
                         log.get("user_agent"),
                         log.get("crawler_name"),
                         log.get("referer"),
-                        log.get("request_id"),
+                        _as_text(log.get("request_id")),
                         log.get("log_file_id")
                     ))
                     inserted += 1
                 except Exception as e:
-                    print(f"Error inserting individual log: {e}")
+                    logger.error(f"Error inserting individual log: {e}")
                     
         return inserted 

@@ -173,10 +173,10 @@ export function LogFileUpload() {
 					id="log-file"
 					onChange={handleFileChange}
 					disabled={isUploading || isSuccess}
-					accept=".log,.txt"
+					accept=".log,.txt,.gz"
 				/>
 				<div className="mt-1 text-sm text-gray-500">
-					Choose a server log file (.log or .txt)
+					Choose a server log file (.log, .txt or .gz)
 				</div>
 				{file && !isUploading && !isSuccess && (
 					<p className="mt-2 text-sm text-gray-500">

@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Dict, Any, List, Optional
 import re
 
@@ -9,9 +9,10 @@ class SQLQueryRequest(BaseModel):
     """
     query: str = Field(..., description="SQL Query to execute")
     params: Optional[List[Any]] = Field(default=None, description="Query parameters as an array")
-    limit: Optional[int] = Field(default=1000, description="Maximum number of rows to return")
+    limit: int = Field(default=1000, ge=1, le=50000, description="Maximum number of rows to return")
     
-    @validator('query')
+    @field_validator('query')
+    @classmethod
     def validate_query(cls, value):
         # First, remove SQL comments to prevent false positives
         # Remove single-line comments (-- comment)

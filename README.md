@@ -21,7 +21,17 @@ This project is 100% free and open-source software.
 - **Frontend**: React-based dashboard with responsive visualizations
 - **Packaging**: Build scripts for creating standalone executables
 
-## Setup Instructions
+## Quick Start with Docker
+
+```
+git clone https://github.com/danilotrix86/crawlytics.git
+cd crawlytics
+docker compose up -d
+```
+
+Then open http://localhost:8000. Imported data and your crawler patterns are kept in the `crawlytics-data` volume.
+
+## Setup Instructions (without Docker)
 
 1. **Clone repository**:
    ```
@@ -101,35 +111,38 @@ cp -R fe/dist/* backend/react/
 
 ## Customizing LLM Crawler Detection
 
-You can customize which LLM crawlers are detected by editing the crawler patterns list in `backend/parser/llm_list.py`. This allows you to:
+Open **Settings** in the app to add, remove or reset the crawler patterns. Each pattern is matched case-insensitively as a substring of the user agent; when several match, the longest wins (so `Applebot-Extended` isn't counted as `Applebot`).
 
-- Add new LLM crawler user agent patterns as they emerge
-- Remove patterns you don't want to track
-- Modify existing patterns to improve detection accuracy
+Your list is saved as JSON in `backend/data/crawler_patterns.json` (set `CRAWLYTICS_PATTERNS_PATH` to store it elsewhere). The built-in defaults live in `backend/parser/crawler_patterns.py`.
 
-Example of the crawler patterns list:
-```python
-LLM_CRAWLER_PATTERNS = [
-    # OpenAI
-    "GPTBot",
-    "ChatGPT-User",
-    "OAI-SearchBot",
+Update the patterns before importing logs: detection runs at import time.
 
-    # Anthropic
-    "ClaudeBot",
-    "Claude-Web",
-    "Anthropic-AI",
-    
-    # Google
-    "googlebot",
-    "Google-Extended",
-    
-    # Add your custom patterns here
-    "Your-Custom-LLM-Crawler",
-]
+## Supported Log Files
+
+Apache and Nginx combined log format, as `.log`, `.txt` or gzip-compressed `.gz` files.
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `PORT` | `8000` | Port used by `run_app.py` |
+| `DB_PATH` | `crawlytics.db` | SQLite database location |
+| `CRAWLYTICS_PATTERNS_PATH` | `backend/data/crawler_patterns.json` | Saved crawler pattern list |
+| `CRAWLYTICS_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Host names the server answers to; add your domain when deploying |
+| `CRAWLYTICS_CORS_ORIGINS` | the local app and Vite dev server | Extra origins allowed to call the API |
+| `PRODUCTION` | off | Binds to `0.0.0.0` and disables the API docs |
+
+Crawlytics has no authentication. Keep it on localhost or put it behind an authenticating reverse proxy.
+
+## Running Tests
+
+```
+cd backend
+pip install -r requirements-dev.txt
+python -m pytest tests
 ```
 
-Make these changes before processing log files to ensure they're detected correctly.
+GitHub Actions runs the backend tests, the frontend lint and build, and a Docker build on every push and pull request.
 
 ## Screenshots
 
@@ -232,7 +245,7 @@ The sidebar navigation provides quick access to:
 ## Contact
 
 For questions, feature requests, or technical support, please:
-- [Open an issue](https://github.com/danilotrix86/crawlitycs/issues) on GitHub (preferred)
+- [Open an issue](https://github.com/danilotrix86/crawlytics/issues) on GitHub (preferred)
 - Send an email to the maintainer with "CRAWLYTICS" in the subject line: danilo.vaccalluzzo@gmail.com
 
 ## License

@@ -7,7 +7,6 @@ import uuid
 from typing import Dict, List, Optional, Pattern, Any
 
 from .parser_base import LogParser
-from .crawler_detection import extract_crawler_name
 
 
 class ApacheParser(LogParser):
@@ -33,11 +32,8 @@ class ApacheParser(LogParser):
         log_data = self._parse_common_fields(match)
         if not log_data:  # If common parsing failed
             return None
-            
-        # Extract crawler name from user agent
-        log_data["crawler_name"] = extract_crawler_name(log_data["user_agent"])
-            
-        # Map to standard output format
+
+        # Map to standard output format (crawler_name is filled in by the processor)
         return {
             "time": log_data["time"],
             "ip_address": log_data["ip"],
@@ -45,7 +41,7 @@ class ApacheParser(LogParser):
             "path": log_data["path"],
             "status": log_data["status"],
             "user_agent": log_data["user_agent"],
-            "crawler_name": log_data["crawler_name"],
+            "crawler_name": None,
             "referer": log_data["referer"],
             "request_id": log_data["request_id"]
         }
@@ -87,11 +83,8 @@ class NginxParser(LogParser):
         log_data = self._parse_common_fields(match)
         if not log_data:  # If common parsing failed
             return None
-            
-        # Extract crawler name from user agent
-        log_data["crawler_name"] = extract_crawler_name(log_data["user_agent"])
-            
-        # Map to standard output format
+
+        # Map to standard output format (crawler_name is filled in by the processor)
         return {
             "time": log_data["time"],
             "ip_address": log_data["ip"],
@@ -99,7 +92,7 @@ class NginxParser(LogParser):
             "path": log_data["path"],
             "status": log_data["status"],
             "user_agent": log_data["user_agent"],
-            "crawler_name": log_data["crawler_name"],
+            "crawler_name": None,
             "referer": log_data["referer"],
             "request_id": log_data["request_id"]
         }
