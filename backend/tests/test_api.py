@@ -192,3 +192,39 @@ def test_migration_adds_columns_to_old_databases(tmp_path):
     migrate(conn)
     columns = {row[1] for row in conn.execute("PRAGMA table_info(access_logs)")}
     assert {"country_code", "asn", "as_org", "verification"} <= columns
+
+
+# --- demo data and CSV export -----------------------------------------------
+
+def test_demo_import_and_csv_export():
+    from datetime import datetime, timezone
+    from demo import generate_lines
+    end = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    assert generate_lines(days=2, seed=1, end=end) == generate_lines(days=2, seed=1, end=end)  # deterministic
+
+    response = client.post("/api/demo")
+    assert response.status_code == 202
+    task_id = response.json()["log_file_id"]
+    task = client.get(f"/api/task/{task_id}").json()
+    assert task["status"] == "complete", task
+    assert task["records_imported"] > 1000
+    assert task["ai_referrals"] > 100
+
+    files = {f["log_file_id"]: f for f in sql("SELECT * FROM log_files").json()}
+    assert files[task_id]["file_name"] == "demo-site-access.log"
+    assert files[task_id]["log_format"] == "apache"
+    assert files[task_id]["parsed_lines"] > task["records_imported"]
+
+    csv_response = client.get(f"/api/export/requests.csv?log_file_id={task_id}")
+    assert csv_response.status_code == 200
+    assert csv_response.headers["content-type"].startswith("text/csv")
+    lines = csv_response.text.strip().splitlines()
+    assert lines[0].startswith("time,ip_address,method,path,status,bytes,crawler_name,operator,category")
+    assert len(lines) == task["records_imported"] + 1
+
+    referrals = client.get(f"/api/export/referrals.csv?log_file_id={task_id}").text.splitlines()
+    assert len(referrals) == task["ai_referrals"] + 1
+    assert client.get("/api/export/secrets.csv").status_code == 404
+
+    client.delete(f"/api/logs/{task_id}")
+    assert sql("SELECT COUNT(*) AS n FROM ai_referrals WHERE log_file_id = ?", [task_id]).json()[0]["n"] == 0

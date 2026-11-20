@@ -12,6 +12,12 @@ This project is 100% free and open-source software.
 - **Bot Verification**: Flags spoofed crawlers by checking each IP against the ranges operators publish (OpenAI, Anthropic, Google, Bing, Perplexity, Apple, Common Crawl, DuckDuckGo, Mistral, Ahrefs), their networks, or reverse DNS
 - **Crawler Directory**: Shows who runs each crawler and why it visits: AI training, AI search, user-triggered fetches, search engines or SEO tools
 - **Real Geolocation**: Country and network owner for every IP from an offline GeoIP database
+- **AI Referral Traffic**: Counts the people who arrive from ChatGPT, Perplexity, Gemini, Claude, Copilot and other assistants, and compares it with how much each company crawls you
+- **Robots.txt Audit**: Shows which crawlers fetch pages your robots.txt blocks, separates genuine bots from fakes, tracks llms.txt reads, and generates rules by crawler purpose
+- **Bandwidth per Crawler**: How much data each crawler downloads
+- **Many Log Formats**: Apache, Nginx, Caddy JSON, IIS, Amazon CloudFront and AWS ALB, plain or gzipped
+- **Command Line and Watch Folder**: Import logs from scripts or cron, or let Crawlytics pick up rotated logs automatically
+- **Demo Data and CSV Export**: Try it without your own logs; download any dataset as CSV
 - **Data Visualization**: Provides heatmaps, charts, and geographic maps for traffic analysis
 - **High-Performance Processing**: Efficiently processes large log files using parallel processing
 - **SQL Query Interface**: Supports read-only SQL queries for custom data exploration
@@ -140,7 +146,48 @@ Logs imported with an older version show a **Check now** button that verifies an
 
 ## Supported Log Files
 
-Apache and Nginx combined log format, as `.log`, `.txt` or gzip-compressed `.gz` files.
+The format is detected automatically. Files can be plain or gzip-compressed (`.gz`).
+
+| Format | Notes |
+|---|---|
+| Apache / Nginx combined | The default `combined` format; an Nginx request id at the end of the line is kept |
+| Caddy | JSON access logs |
+| W3C extended | IIS and Amazon CloudFront standard logs (reads the `#Fields` header) |
+| AWS ALB | Application Load Balancer access logs |
+
+Only crawler requests are stored in full. Visits referred by AI assistants are stored without IP address or user agent, and other human traffic is only counted.
+
+No logs at hand? On the Upload page, **Load demo data** imports 30 days of generated traffic for a fictional site.
+
+## AI Referrals
+
+Crawlytics recognises visits whose Referer is an AI assistant (ChatGPT, Perplexity, Gemini, Claude, Copilot, Le Chat, DeepSeek, Meta AI, Grok and others) or that carry ChatGPT's `utm_source=chatgpt.com` tag. The AI Referrals page shows them over time, the pages people land on, and how many requests each company's AI crawlers made for every visit its assistant sent back.
+
+## Robots.txt Audit
+
+Download your robots.txt from your site or paste it in. Crawlytics checks every crawler request against it (RFC 9309, including `*` and `$` wildcards) and reports:
+
+- crawlers whose **verified** requests fetched blocked pages
+- blocked pages fetched by bots faking a crawler's user agent, which robots.txt can't stop
+- user-triggered fetchers (e.g. ChatGPT-User), shown separately because several operators say robots.txt doesn't apply to them
+- which crawlers read `robots.txt` and `llms.txt`
+
+The generator writes robots.txt rules for the categories you choose (for example, block AI training but allow AI search), plus an nginx rule for crawlers that ignore robots.txt.
+
+## Command Line
+
+```
+cd backend
+python cli.py ingest /var/log/nginx/access.log.1 /var/log/nginx/access.log.2.gz
+python cli.py watch /var/log/nginx --pattern "access.log.*"
+python cli.py enrich
+```
+
+`watch` imports each file once, after it has stopped changing, so point it at rotated logs. Use `--once` to run a single scan from cron. With Docker: `docker compose run --rm -v /var/log/nginx:/logs:ro crawlytics python cli.py ingest /logs/access.log.1`.
+
+## Export
+
+The Logs Table page has buttons to download crawler requests and AI referrals as CSV, also available at `/api/export/requests.csv` and `/api/export/referrals.csv` (add `?log_file_id=` to limit to one file).
 
 ## Configuration
 

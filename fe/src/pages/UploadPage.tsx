@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
 import { LogFileUpload } from '../components/upload/LogFileUpload';
+import { DemoDataCard } from '../components/upload/DemoDataCard';
 
 interface UploadPageProps {
 	className?: string;
@@ -22,6 +23,7 @@ const UploadPage: React.FC<UploadPageProps> = memo(({ className = '' }) => {
 
 			<div>
 				<LogFileUpload />
+				<DemoDataCard />
 			</div>
 		</div>
 	);

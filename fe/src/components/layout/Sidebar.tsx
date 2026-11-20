@@ -7,7 +7,7 @@
 import React, { Suspense } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Sidebar, SidebarItem as FlowbiteSidebarItem, SidebarItemGroup, SidebarItems } from "flowbite-react";
-import { ChartMixed, MapPin, Grid, FolderOpen, CloudArrowUp, Users, TableRow, QuestionCircle, Cog, Code } from 'flowbite-react-icons/outline';
+import { ChartMixed, MapPin, Grid, FolderOpen, CloudArrowUp, Users, TableRow, QuestionCircle, Cog, Code, Messages, ShieldCheck } from 'flowbite-react-icons/outline';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useQueryErrorResetBoundary } from '@tanstack/react-query';
 import { LogFilesErrorFallback } from './Sidebar/LogFilesErrorFallback';
@@ -75,6 +75,12 @@ export const AppSidebar: React.FC<SidebarProps> = ({ className }) => {
                         <SidebarItem to="/crawler-behaviour" icon={Code}>
                             Crawler Behaviour
                         </SidebarItem>
+                        <SidebarItem to="/ai-referrals" icon={Messages}>
+                            AI Referrals
+                        </SidebarItem>
+                        <SidebarItem to="/robots" icon={ShieldCheck}>
+                            Robots.txt Audit
+                        </SidebarItem>
                         <SidebarItem to="/logs" icon={TableRow}>
                             Logs Table
                         </SidebarItem>
@@ -105,7 +111,7 @@ export const AppSidebar: React.FC<SidebarProps> = ({ className }) => {
             <div className="mt-auto py-4 px-3 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <SidebarItems>
                     <SidebarItemGroup>
-                        <SidebarItem to="https://github.com/danilotrix86/crawlitycs/issues" icon={QuestionCircle}>
+                        <SidebarItem to="https://github.com/danilotrix86/crawlytics/issues" icon={QuestionCircle}>
                             Open an issue on GitHub
                         </SidebarItem>
                     </SidebarItemGroup>

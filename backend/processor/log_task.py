@@ -21,7 +21,8 @@ UPLOAD_COPY_CHUNK_BYTES = 1024 * 1024
 
 
 def process_log_file(file_path: str, task_id: str, file_name: str,
-                     save_to_db: bool = True, create_indexes: bool = True) -> None:
+                     save_to_db: bool = True, create_indexes: bool = True,
+                     delete_after: bool = True) -> Dict[str, Any]:
     """
     Process a log file and optionally save matches to the database.
 
@@ -42,7 +43,8 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
         start_time = datetime.now()
 
         processor = LogProcessor(file_path)
-        results, stats = processor.process()
+        output = processor.process()
+        results, referrals, stats = output.entries, output.referrals, output.stats
 
         processing_time = (datetime.now() - start_time).total_seconds()
         logger.info(f"Processing completed in {processing_time:.2f} seconds (Task ID: {task_id})")
@@ -54,13 +56,14 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
             "processing_time": processing_time,
             "file_size_mb": file_size_mb,
             "matched_entries": len(results),
+            "ai_referrals": len(referrals),
             "completed_at": datetime.now().isoformat(),
             "log_file_id": task_id,
             "records_imported": len(results),
             "issues": [],
         }
 
-        if save_to_db and results:
+        if save_to_db and (results or referrals):
             enrich_start = datetime.now()
             try:
                 get_enricher().enrich_entries(results)
@@ -75,14 +78,16 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
                 logger.error(f"Failed to initialize database (Task ID: {task_id})")
                 processing_results[task_id]["status"] = "db_init_failed"
                 processing_results[task_id]["issues"].append("Database initialization failed")
-                return
+                return processing_results[task_id]
 
             writer = LogWriter()
-            if not writer.insert_log_file(task_id, file_name, set_as_active=True):
+            if not writer.insert_log_file(task_id, file_name, set_as_active=True, stats=stats):
                 logger.error(f"Failed to create log file record (Task ID: {task_id})")
                 processing_results[task_id]["issues"].append("Failed to create log file record")
 
             db_stats = writer.insert_logs(results, log_file_id=task_id)
+            if referrals:
+                db_stats["referrals_inserted"] = writer.insert_referrals(referrals, task_id)
             db_time = (datetime.now() - db_start_time).total_seconds()
 
             processing_results[task_id].update({
@@ -113,10 +118,12 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
             "file_size_mb": file_size_mb,
         }
     finally:
-        try:
-            os.unlink(file_path)
-        except OSError as e:
-            logger.warning(f"Failed to remove temporary file {file_path}: {e}")
+        if delete_after:
+            try:
+                os.unlink(file_path)
+            except OSError as e:
+                logger.warning(f"Failed to remove temporary file {file_path}: {e}")
+    return processing_results[task_id]
 
 
 async def save_uploaded_file(upload: UploadFile) -> str:

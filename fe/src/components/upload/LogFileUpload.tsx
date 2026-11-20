@@ -173,10 +173,10 @@ export function LogFileUpload() {
 					id="log-file"
 					onChange={handleFileChange}
 					disabled={isUploading || isSuccess}
-					accept=".log,.txt,.gz"
+					accept=".log,.txt,.gz,.json"
 				/>
 				<div className="mt-1 text-sm text-gray-500">
-					Choose a server log file (.log, .txt or .gz)
+					Apache, Nginx, Caddy (JSON), IIS, CloudFront or AWS ALB logs, plain or .gz
 				</div>
 				{file && !isUploading && !isSuccess && (
 					<p className="mt-2 text-sm text-gray-500">

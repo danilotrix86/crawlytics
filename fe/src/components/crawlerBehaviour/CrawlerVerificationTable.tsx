@@ -2,6 +2,7 @@ import React from 'react';
 import { useLogFileData, DataComponentWrapper, getLogFileSuffix } from '../../shared/analytics-utils';
 import { SortableTable, SortableColumn } from '../geoinsight/shared/SortableTable';
 import { CATEGORY_DESCRIPTIONS, categoryLabel } from '../../utils/crawlerCategories';
+import { formatBytes } from '../../utils/format';
 
 interface CrawlerRow {
   crawler_name: string;
@@ -14,6 +15,7 @@ interface CrawlerRow {
   suspicious: number;
   unverifiable: number;
   unchecked: number;
+  bytes: number | null;
 }
 
 const QUERY = `
@@ -27,7 +29,8 @@ const QUERY = `
     SUM(a.verification = 'verified') AS verified,
     SUM(a.verification = 'suspicious') AS suspicious,
     SUM(a.verification = 'unknown') AS unverifiable,
-    SUM(a.verification IS NULL) AS unchecked
+    SUM(a.verification IS NULL) AS unchecked,
+    SUM(a.bytes) AS bytes
   FROM access_logs a
   LEFT JOIN crawler_info ci ON ci.crawler_name = a.crawler_name
   WHERE a.crawler_name IS NOT NULL {LOG_FILE_CONDITION}
@@ -112,6 +115,12 @@ const CrawlerVerificationTableComponent: React.FC = () => {
       label: 'Requests',
       align: 'right',
       render: (row) => <span className="font-mono">{Number(row.requests).toLocaleString()}</span>,
+    },
+    {
+      key: 'bytes',
+      label: 'Data sent',
+      align: 'right',
+      render: (row) => <span className="font-mono whitespace-nowrap">{formatBytes(row.bytes)}</span>,
     },
     { key: 'suspicious', label: 'Verification', render: (row) => <VerificationBar row={row} /> },
   ];

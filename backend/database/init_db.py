@@ -76,6 +76,12 @@ ADDED_COLUMNS = {
         ("asn", "INTEGER"),
         ("as_org", "TEXT"),
         ("verification", "TEXT"),
+        ("bytes", "INTEGER"),
+    ],
+    "log_files": [
+        ("log_format", "TEXT"),
+        ("total_lines", "INTEGER"),
+        ("parsed_lines", "INTEGER"),
     ],
 }
 
@@ -85,6 +91,8 @@ def migrate(conn):
     cursor = conn.cursor()
     for table, columns in ADDED_COLUMNS.items():
         existing = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})")}
+        if not existing:
+            continue  # table doesn't exist yet; the schema creates it with every column
         for name, sql_type in columns:
             if name not in existing:
                 logger.info(f"Adding column {table}.{name}")

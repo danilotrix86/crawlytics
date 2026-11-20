@@ -12,6 +12,8 @@ from pathlib import Path
 from routes.logs import router as logs_router
 from routes.crawler_config import router as crawler_config_router
 from routes.enrichment import router as enrichment_router
+from routes.robots import router as robots_router
+from routes.demo_export import router as demo_export_router
 
 # Configure logging
 logging.basicConfig(
@@ -67,7 +69,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST", "DELETE"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type"],
 )
 
@@ -75,6 +77,8 @@ app.add_middleware(
 app.include_router(logs_router, prefix="/api")
 app.include_router(crawler_config_router, prefix="/api")
 app.include_router(enrichment_router, prefix="/api")
+app.include_router(robots_router, prefix="/api")
+app.include_router(demo_export_router, prefix="/api")
 
 # Define the path to the static files (React build) using pathlib for platform compatibility
 static_files_dir = Path(__file__).parent / "react"

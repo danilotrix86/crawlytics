@@ -175,6 +175,8 @@ async def delete_log_file_data(log_file_id: str) -> Dict[str, Any]:
                 (log_file_id,)
             )
             deleted_rows = cur.rowcount
+
+            cur.execute("DELETE FROM ai_referrals WHERE log_file_id = ?", (log_file_id,))
             
             # Delete the log file record
             cur.execute(

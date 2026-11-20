@@ -6,7 +6,10 @@ CREATE TABLE IF NOT EXISTS log_files (
     log_file_id TEXT PRIMARY KEY NOT NULL,
     file_name TEXT NOT NULL,
     upload_timestamp TEXT DEFAULT (datetime('now')),
-    in_use BOOLEAN DEFAULT 0
+    in_use BOOLEAN DEFAULT 0,
+    log_format TEXT,       -- detected format, e.g. 'apache', 'caddy', 'w3c'
+    total_lines INTEGER,   -- lines in the file
+    parsed_lines INTEGER   -- requests parsed (humans + bots), for share-of-traffic
 );
 
 CREATE TABLE IF NOT EXISTS access_logs (
@@ -24,8 +27,24 @@ CREATE TABLE IF NOT EXISTS access_logs (
     country_code TEXT,   -- ISO 3166 alpha-2, from the offline GeoIP database
     asn INTEGER,         -- Autonomous system number of the IP
     as_org TEXT,         -- Network owner, e.g. "Google LLC"
-    verification TEXT    -- 'verified', 'suspicious' or 'unknown' (NULL = not checked yet)
+    verification TEXT,   -- 'verified', 'suspicious' or 'unknown' (NULL = not checked yet)
+    bytes INTEGER        -- response size
 );
+
+-- Human visits referred by AI assistants. No IP or user agent is stored.
+CREATE TABLE IF NOT EXISTS ai_referrals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    time TEXT NOT NULL,
+    path TEXT,
+    status INTEGER,
+    bytes INTEGER,
+    assistant TEXT,      -- e.g. 'ChatGPT'
+    operator TEXT,       -- e.g. 'OpenAI', matches crawler_info.operator
+    referrer_host TEXT,
+    log_file_id TEXT REFERENCES log_files(log_file_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_referrals_log_file_id ON ai_referrals(log_file_id);
 
 -- Who runs each crawler and why it visits, refreshed from enrichment/crawlers.json at startup
 CREATE TABLE IF NOT EXISTS crawler_info (

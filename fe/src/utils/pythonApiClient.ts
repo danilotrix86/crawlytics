@@ -90,3 +90,7 @@ export async function pythonApiUpload<T>(endpoint: string, formData: FormData): 
     throw new PythonApiError('Unknown upload error');
   }
 } 
+/** Absolute URL for an API path, e.g. for download links */
+export function apiUrl(endpoint: string): string {
+  return `${PYTHON_API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+}
