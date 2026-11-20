@@ -9,6 +9,9 @@ This project is 100% free and open-source software.
 ## Core Functionality
 
 - **LLM Crawler Detection**: Identifies requests from AI systems in standard server logs
+- **Bot Verification**: Flags spoofed crawlers by checking each IP against the ranges operators publish (OpenAI, Anthropic, Google, Bing, Perplexity, Apple, Common Crawl, DuckDuckGo, Mistral, Ahrefs), their networks, or reverse DNS
+- **Crawler Directory**: Shows who runs each crawler and why it visits: AI training, AI search, user-triggered fetches, search engines or SEO tools
+- **Real Geolocation**: Country and network owner for every IP from an offline GeoIP database
 - **Data Visualization**: Provides heatmaps, charts, and geographic maps for traffic analysis
 - **High-Performance Processing**: Efficiently processes large log files using parallel processing
 - **SQL Query Interface**: Supports read-only SQL queries for custom data exploration
@@ -117,6 +120,24 @@ Your list is saved as JSON in `backend/data/crawler_patterns.json` (set `CRAWLYT
 
 Update the patterns before importing logs: detection runs at import time.
 
+## Bot Verification and Geolocation
+
+Every imported request gets a verdict:
+
+| Verdict | Meaning |
+|---|---|
+| Verified | The IP is in the operator's published IP list, inside its network (ASN), or passes forward-confirmed reverse DNS |
+| Suspicious | The operator publishes a way to check and the IP failed it. Usually a spoofed user agent |
+| Unverifiable | The operator publishes no way to check (e.g. Bytespider), or the lists couldn't be downloaded |
+
+Operators rotate their IPs, so Crawlytics keeps every version of each list it has downloaded and checks against all of them. Logs older than your first run can still be flagged by mistake when an IP has since been retired.
+
+Who runs each crawler, its purpose and how to verify it are defined in [`backend/enrichment/crawlers.json`](backend/enrichment/crawlers.json). Pull requests that add crawlers are welcome.
+
+IP lists are cached for a day in `backend/data/ip_ranges`. Country and network data come from the free [DB-IP Lite](https://db-ip.com) databases (CC BY 4.0), downloaded to `backend/data/geoip` on first use and refreshed monthly. To use MaxMind instead, put `GeoLite2-Country.mmdb` and `GeoLite2-ASN.mmdb` in that folder.
+
+Logs imported with an older version show a **Check now** button that verifies and geolocates them.
+
 ## Supported Log Files
 
 Apache and Nginx combined log format, as `.log`, `.txt` or gzip-compressed `.gz` files.
@@ -131,6 +152,9 @@ Apache and Nginx combined log format, as `.log`, `.txt` or gzip-compressed `.gz`
 | `CRAWLYTICS_ALLOWED_HOSTS` | `localhost,127.0.0.1` | Host names the server answers to; add your domain when deploying |
 | `CRAWLYTICS_CORS_ORIGINS` | the local app and Vite dev server | Extra origins allowed to call the API |
 | `PRODUCTION` | off | Binds to `0.0.0.0` and disables the API docs |
+| `CRAWLYTICS_DATA_DIR` | `backend/data` (or the database's folder) | Where IP lists and GeoIP databases are stored |
+| `CRAWLYTICS_OFFLINE` | off | Never download anything; use only cached or user-provided files |
+| `CRAWLYTICS_RDNS` | on | Set to `0` to skip reverse DNS checks |
 
 Crawlytics has no authentication. Keep it on localhost or put it behind an authenticating reverse proxy.
 

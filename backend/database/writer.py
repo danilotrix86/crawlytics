@@ -131,9 +131,10 @@ class LogWriter:
         # Prepare the INSERT statement
         query = """
         INSERT INTO access_logs
-            (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id)
+            (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id,
+             country_code, asn, as_org, verification)
         VALUES
-            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         
         # Prepare parameters list
@@ -154,7 +155,11 @@ class LogWriter:
                 log.get("crawler_name"),
                 log.get("referer"),
                 _as_text(log.get("request_id")),
-                log.get("log_file_id")
+                log.get("log_file_id"),
+                log.get("country_code"),
+                log.get("asn"),
+                log.get("as_org"),
+                log.get("verification")
             ))
         
         # Execute batch insert with proper error handling
@@ -183,9 +188,10 @@ class LogWriter:
             # Prepare the INSERT statement
             query = """
             INSERT INTO access_logs
-                (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id)
+                (time, ip_address, method, path, status, user_agent, crawler_name, referer, request_id, log_file_id,
+             country_code, asn, as_org, verification)
             VALUES
-                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             
             for log in logs:
@@ -205,7 +211,11 @@ class LogWriter:
                         log.get("crawler_name"),
                         log.get("referer"),
                         _as_text(log.get("request_id")),
-                        log.get("log_file_id")
+                        log.get("log_file_id"),
+                        log.get("country_code"),
+                        log.get("asn"),
+                        log.get("as_org"),
+                        log.get("verification")
                     ))
                     inserted += 1
                 except Exception as e:

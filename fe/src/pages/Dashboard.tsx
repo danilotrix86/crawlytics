@@ -9,6 +9,9 @@ import { MostActiveCrawlerCard } from '../components/dashboard/MostActiveCrawler
 import { CrawlersPerPageCard } from '../components/dashboard/CrawlersPerPageCard';
 import StatusCodeChart from '../components/dashboard/StatusCodeChart';
 import TopCrawlersChart from '../components/dashboard/TopCrawlersChart';
+import { VerifiedTrafficCard } from '../components/dashboard/VerifiedTrafficCard';
+import CrawlerPurposeChart from '../components/dashboard/CrawlerPurposeChart';
+import EnrichmentBanner from '../components/enrichment/EnrichmentBanner';
 
 interface DashboardProps {
 	className?: string;
@@ -23,6 +26,8 @@ const Dashboard: React.FC<DashboardProps> = memo(({ className = '' }) => {
 			<meta name="description" content="View your web crawling analytics" /> 
 
 			<h1 className="text-3xl font-bold mb-6 ">Dashboard</h1>
+
+			<EnrichmentBanner />
 			
 			<div className="grid grid-cols-3 gap-4 mb-6">
 				<TotalLogsCard />
@@ -34,6 +39,13 @@ const Dashboard: React.FC<DashboardProps> = memo(({ className = '' }) => {
 				<MostActiveCrawlerCard />
 				<ErrorResponsesCard />
 				<CrawlersPerPageCard />
+			</div>
+
+			<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+				<VerifiedTrafficCard />
+				<div className="lg:col-span-2">
+					<CrawlerPurposeChart />
+				</div>
 			</div>
 
 			<div className="w-full mb-12">

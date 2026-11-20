@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 from fastapi import UploadFile
 
 from parser import LogProcessor
+from enrichment.store import get_enricher
 from database.writer import LogWriter
 from database.init_db import init_database, create_all_indexes
 
@@ -60,6 +61,14 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
         }
 
         if save_to_db and results:
+            enrich_start = datetime.now()
+            try:
+                get_enricher().enrich_entries(results)
+                processing_results[task_id]["enrichment_time"] = (datetime.now() - enrich_start).total_seconds()
+            except Exception as e:
+                logger.exception(f"Enrichment failed, saving without it (Task ID: {task_id})")
+                processing_results[task_id]["issues"].append(f"Country/verification lookup failed: {e}")
+
             db_start_time = datetime.now()
 
             if not init_database():

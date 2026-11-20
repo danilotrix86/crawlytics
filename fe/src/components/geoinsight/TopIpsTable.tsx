@@ -1,7 +1,9 @@
 import React from 'react';
 import { useSqlData } from '../../hooks/useSqlData';
 import { getCookie } from '../../utils/cookies';
-import { getHostOrg, formatDate } from '../../utils/cloudProviders';
+import { formatDate } from '../../utils/cloudProviders';
+import { getCountryName } from '../../utils/countryMappings';
+import { VerificationBadge, Verification } from '../ui/VerificationBadge';
 import { COOKIE_NAME, getTopIpsQuery, prepareQuery } from '../../utils/geoQueries';
 import DataComponentWrapper from './shared/DataComponentWrapper';
 import { SortableTable, SortableColumn } from './shared/SortableTable';
@@ -10,6 +12,8 @@ import { SortableTable, SortableColumn } from './shared/SortableTable';
 interface IpData {
   ip_address: string;
   host_org?: string;
+  country_code?: string;
+  verification?: Verification;
   request_count: number;
   crawler_name?: string;
   last_seen: string;
@@ -49,9 +53,9 @@ const TopIpsTableComponent: React.FC<TopIpsTableProps> = ({ ipData: externalIpDa
     },
     {
       key: 'host_org',
-      label: 'Host/Organization',
+      label: 'Network',
       render: (ip) => {
-        const hostOrg = ip.host_org || getHostOrg(ip.ip_address);
+        const hostOrg = ip.host_org || 'Unknown';
         return (
           <span 
             className={`px-2 py-1 rounded text-xs ${
@@ -64,6 +68,20 @@ const TopIpsTableComponent: React.FC<TopIpsTableProps> = ({ ipData: externalIpDa
           </span>
         );
       }
+    },
+    {
+      key: 'country_code',
+      label: 'Country',
+      render: (ip) => (
+        <span className="text-sm whitespace-nowrap">
+          {ip.country_code ? getCountryName(ip.country_code) : '—'}
+        </span>
+      )
+    },
+    {
+      key: 'verification',
+      label: 'Verification',
+      render: (ip) => <VerificationBadge value={ip.verification} />
     },
     {
       key: 'request_count',
@@ -104,7 +122,7 @@ const TopIpsTableComponent: React.FC<TopIpsTableProps> = ({ ipData: externalIpDa
           Top IP Addresses / Data Centers
           {!logFileId && <span className="ml-2 text-sm font-normal text-gray-500 dark:text-gray-400">- All Log Files</span>}
         </h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Most active individual IPs with host information</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Most active IPs, the network that owns them, and whether they really belong to the crawler they claim to be</p>
       </div>
       <div className="max-h-[600px] overflow-auto">
         <SortableTable 

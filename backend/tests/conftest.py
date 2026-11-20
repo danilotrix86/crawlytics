@@ -13,6 +13,8 @@ sys.path.insert(0, str(BACKEND_DIR))
 _tmp = Path(tempfile.mkdtemp(prefix="crawlytics-tests-"))
 os.environ["DB_PATH"] = str(_tmp / "test.db")
 os.environ["CRAWLYTICS_PATTERNS_PATH"] = str(_tmp / "crawler_patterns.json")
+os.environ["CRAWLYTICS_OFFLINE"] = "1"  # tests never download range lists or GeoIP data
+os.environ["CRAWLYTICS_RDNS"] = "0"
 
 SAMPLE_LINES = [
     '1.2.3.4 - - [10/Oct/2024:13:55:36 +0000] "GET /docs/intro HTTP/1.1" 200 2326 "-" '

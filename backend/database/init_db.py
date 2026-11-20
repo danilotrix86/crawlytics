@@ -3,9 +3,7 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from .db import DBConnection
-
-# Get the database connection
-from .db import DBConnection
+from enrichment.store import sync_crawler_info
 
 # Get directory of the current file using pathlib
 current_dir = Path(__file__).parent.resolve()
@@ -71,6 +69,28 @@ def apply_schema(conn, schema_file):
         logger.error(f"Error applying schema: {e}")
         return False
 
+# Columns added after the first release, applied to existing databases
+ADDED_COLUMNS = {
+    "access_logs": [
+        ("country_code", "TEXT"),
+        ("asn", "INTEGER"),
+        ("as_org", "TEXT"),
+        ("verification", "TEXT"),
+    ],
+}
+
+
+def migrate(conn):
+    """Add any columns missing from databases created by older versions."""
+    cursor = conn.cursor()
+    for table, columns in ADDED_COLUMNS.items():
+        existing = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})")}
+        for name, sql_type in columns:
+            if name not in existing:
+                logger.info(f"Adding column {table}.{name}")
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
+
+
 def create_indexes(conn):
     """
     Create indexes on the access_logs table.
@@ -91,6 +111,7 @@ def create_indexes(conn):
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_access_logs_path ON access_logs(path)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_access_logs_log_file_id ON access_logs(log_file_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_access_logs_crawler_name ON access_logs(crawler_name)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_access_logs_country_code ON access_logs(country_code)")
         
         # Analyze for query optimization (SQLite equivalent)
         cursor.execute("ANALYZE")
@@ -113,15 +134,12 @@ def init_database():
         with DBConnection() as conn:
             logger.info("Initializing database schema...")
 
-            # Check if tables already exist
-            if table_exists(conn, "access_logs"):
-                logger.info("Database already initialized")
-                return True
-
-            # Apply schema
-            success = apply_schema(conn, schema_file)
-                
-            return success
+            # The schema uses IF NOT EXISTS, so it's safe to apply every time
+            if not apply_schema(conn, schema_file):
+                return False
+            migrate(conn)
+            sync_crawler_info(conn)
+            return True
     except Exception as e:
         logger.error(f"Error initializing database: {e}")
         return False

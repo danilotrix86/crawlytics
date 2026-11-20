@@ -20,7 +20,20 @@ CREATE TABLE IF NOT EXISTS access_logs (
     crawler_name TEXT,
     referer TEXT,
     request_id TEXT,     -- Store UUID as text
-    log_file_id TEXT REFERENCES log_files(log_file_id)
+    log_file_id TEXT REFERENCES log_files(log_file_id),
+    country_code TEXT,   -- ISO 3166 alpha-2, from the offline GeoIP database
+    asn INTEGER,         -- Autonomous system number of the IP
+    as_org TEXT,         -- Network owner, e.g. "Google LLC"
+    verification TEXT    -- 'verified', 'suspicious' or 'unknown' (NULL = not checked yet)
+);
+
+-- Who runs each crawler and why it visits, refreshed from enrichment/crawlers.json at startup
+CREATE TABLE IF NOT EXISTS crawler_info (
+    crawler_name TEXT PRIMARY KEY COLLATE NOCASE,
+    operator TEXT,
+    category TEXT,
+    description TEXT,
+    docs_url TEXT
 );
 
 -- Indexes (Create *after* initial data load for better performance):

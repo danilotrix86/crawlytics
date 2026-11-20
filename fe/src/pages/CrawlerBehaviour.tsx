@@ -3,6 +3,8 @@ import { CrawlerRequestRateCard } from '../components/crawlerBehaviour/CrawlerRe
 import { PathDepthAnalysisCard } from '../components/crawlerBehaviour/PathDepthAnalysisCard';
 import { CrawlerErrorRateCard } from '../components/crawlerBehaviour/CrawlerErrorRateCard';
 import { CrawlerPathsChart } from '../components/crawlerBehaviour/CrawlerPathsChart';
+import { CrawlerVerificationTable } from '../components/crawlerBehaviour/CrawlerVerificationTable';
+import EnrichmentBanner from '../components/enrichment/EnrichmentBanner';
 
 interface CrawlerBehaviourProps {
 	className?: string;
@@ -17,6 +19,12 @@ const CrawlerBehaviour: React.FC<CrawlerBehaviourProps> = memo(({ className = ''
 			<meta name="description" content="Analyze crawler behaviour patterns on your website" />
 
 			<h1 className="text-3xl font-bold mb-6">Crawler Behaviour</h1>
+
+			<EnrichmentBanner />
+
+			<div className="mb-6">
+				<CrawlerVerificationTable />
+			</div>
 			
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 				<CrawlerRequestRateCard />

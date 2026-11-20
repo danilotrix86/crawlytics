@@ -11,6 +11,7 @@ from pathlib import Path
 # Import routes
 from routes.logs import router as logs_router
 from routes.crawler_config import router as crawler_config_router
+from routes.enrichment import router as enrichment_router
 
 # Configure logging
 logging.basicConfig(
@@ -73,6 +74,7 @@ app.add_middleware(
 # Include routers
 app.include_router(logs_router, prefix="/api")
 app.include_router(crawler_config_router, prefix="/api")
+app.include_router(enrichment_router, prefix="/api")
 
 # Define the path to the static files (React build) using pathlib for platform compatibility
 static_files_dir = Path(__file__).parent / "react"
@@ -110,7 +112,8 @@ async def serve_react_app(request: Request, full_path: str):
 
     index_path = static_files_dir / "index.html"
     if index_path.exists():
-        return FileResponse(str(index_path))
+        # Always revalidate the page so browsers pick up new (hashed) bundles after an upgrade
+        return FileResponse(str(index_path), headers={"Cache-Control": "no-cache"})
     logger.error(f"React app index.html not found at: {index_path}")
     return JSONResponse({"detail": "React app not found"}, status_code=404)
 

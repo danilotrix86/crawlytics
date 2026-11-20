@@ -154,3 +154,41 @@ def test_upload_import_and_query(patterns_file):
     assert client.get("/api/active-log-file").json()["log_file_id"] == task_id
     deleted = client.delete(f"/api/logs/{task_id}").json()
     assert deleted["deleted_log_entries"] == 3
+
+
+# --- enrichment -------------------------------------------------------------
+
+def test_crawler_info_table_is_queryable():
+    rows = sql("SELECT operator, category FROM crawler_info WHERE crawler_name = 'gptbot'").json()
+    assert rows == [{"operator": "OpenAI", "category": "training"}]
+
+
+def test_import_stores_verdicts_and_backfill_runs(patterns_file):
+    body = ("\n".join(SAMPLE_LINES) + "\n").encode()
+    task_id = client.post("/api/import-log", files={"log_file": ("a.log", body, "text/plain")}).json()["log_file_id"]
+
+    # Offline in tests: no range lists or GeoIP, so every verdict is "unknown"
+    rows = sql("SELECT verification FROM access_logs WHERE log_file_id = ?", [task_id]).json()
+    assert {r["verification"] for r in rows} == {"unknown"}
+
+    status_body = client.get(f"/api/enrichment/status?log_file_id={task_id}").json()
+    assert status_body["pending_rows"] == 0
+    assert "training" in status_body["categories"]
+
+    run = client.post("/api/enrichment/run", json={"log_file_id": task_id, "force": True})
+    assert run.status_code == 202
+    result = client.get(f"/api/task/{run.json()['task_id']}").json()
+    assert result["status"] == "complete", result
+    assert result["rows_updated"] == 3
+
+    client.delete(f"/api/logs/{task_id}")
+
+
+def test_migration_adds_columns_to_old_databases(tmp_path):
+    import sqlite3
+    from database.init_db import migrate
+    conn = sqlite3.connect(tmp_path / "old.db")
+    conn.execute("CREATE TABLE access_logs (id INTEGER PRIMARY KEY, ip_address TEXT)")
+    migrate(conn)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(access_logs)")}
+    assert {"country_code", "asn", "as_org", "verification"} <= columns
