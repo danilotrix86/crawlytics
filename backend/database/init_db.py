@@ -1,6 +1,6 @@
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from .db import DBConnection
 from enrichment.store import sync_crawler_info
@@ -82,12 +82,43 @@ ADDED_COLUMNS = {
         ("log_format", "TEXT"),
         ("total_lines", "INTEGER"),
         ("parsed_lines", "INTEGER"),
+        ("content_hash", "TEXT"),
     ],
 }
 
 
+SCHEMA_VERSION = 1
+
+
+def _to_utc_iso(value):
+    """'2024-10-11T09:00:00+02:00' -> '2024-10-11T07:00:00+00:00'"""
+    try:
+        parsed = datetime.fromisoformat(value)
+    except (TypeError, ValueError):
+        return value
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).isoformat()
+
+
+def normalize_times_to_utc(conn):
+    """Older versions kept each log line's own UTC offset; convert those rows to UTC."""
+    for table in ("access_logs", "ai_referrals"):
+        columns = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+        if "time" not in columns:
+            continue
+        rows = conn.execute(
+            f"SELECT id, time FROM {table} WHERE time NOT LIKE '%+00:00'"
+        ).fetchall()
+        updates = [(_to_utc_iso(t), i) for i, t in rows]
+        updates = [(t, i) for (t, i), (_, old) in zip(updates, rows) if t != old]
+        if updates:
+            logger.info(f"Converting {len(updates)} {table} timestamps to UTC")
+            conn.executemany(f"UPDATE {table} SET time = ? WHERE id = ?", updates)
+
+
 def migrate(conn):
-    """Add any columns missing from databases created by older versions."""
+    """Bring databases created by older versions up to date."""
     cursor = conn.cursor()
     for table, columns in ADDED_COLUMNS.items():
         existing = {row[1] for row in cursor.execute(f"PRAGMA table_info({table})")}
@@ -97,6 +128,12 @@ def migrate(conn):
             if name not in existing:
                 logger.info(f"Adding column {table}.{name}")
                 cursor.execute(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
+
+    version = cursor.execute("PRAGMA user_version").fetchone()[0]
+    if version < 1:
+        normalize_times_to_utc(conn)
+    if version < SCHEMA_VERSION:
+        cursor.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
 def create_indexes(conn):

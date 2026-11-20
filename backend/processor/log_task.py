@@ -1,13 +1,15 @@
+import hashlib
 import logging
 import os
 import tempfile
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from fastapi import UploadFile
 
 from parser import LogProcessor
 from enrichment.store import get_enricher
+from database.db import DBConnection
 from database.writer import LogWriter
 from database.init_db import init_database, create_all_indexes
 
@@ -20,14 +22,34 @@ processing_results: Dict[str, Dict[str, Any]] = {}
 UPLOAD_COPY_CHUNK_BYTES = 1024 * 1024
 
 
+def file_sha256(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(UPLOAD_COPY_CHUNK_BYTES), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def find_imported_file(content_hash: str) -> Optional[Dict[str, Any]]:
+    """The log file already imported with this content, if any."""
+    with DBConnection() as conn:
+        row = conn.execute(
+            "SELECT log_file_id, file_name, upload_timestamp FROM log_files WHERE content_hash = ? LIMIT 1",
+            (content_hash,),
+        ).fetchone()
+    return dict(row) if row else None
+
+
 def process_log_file(file_path: str, task_id: str, file_name: str,
                      save_to_db: bool = True, create_indexes: bool = True,
-                     delete_after: bool = True) -> Dict[str, Any]:
+                     delete_after: bool = True, content_hash: Optional[str] = None,
+                     allow_duplicate: bool = False) -> Dict[str, Any]:
     """
     Process a log file and optionally save matches to the database.
 
     This is a regular (sync) function on purpose: FastAPI runs sync background
     tasks in a thread pool, so parsing a large file doesn't freeze the API.
+    Files whose content was imported before are skipped unless allow_duplicate.
     """
     processing_results[task_id] = {
         "status": "processing",
@@ -39,6 +61,17 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
     file_size_mb = os.path.getsize(file_path) / (1024 * 1024) if os.path.exists(file_path) else 0
 
     try:
+        content_hash = content_hash or file_sha256(file_path)
+        existing = None if allow_duplicate else find_imported_file(content_hash)
+        if existing:
+            processing_results[task_id].update(
+                status="duplicate",
+                error=f"Already imported as {existing['file_name']}",
+                duplicate_of=existing["log_file_id"],
+                completed_at=datetime.now().isoformat(),
+            )
+            return processing_results[task_id]
+
         logger.info(f"Starting processing of file: {file_name} (Task ID: {task_id})")
         start_time = datetime.now()
 
@@ -81,7 +114,8 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
                 return processing_results[task_id]
 
             writer = LogWriter()
-            if not writer.insert_log_file(task_id, file_name, set_as_active=True, stats=stats):
+            if not writer.insert_log_file(task_id, file_name, set_as_active=True,
+                                          stats={**stats, "content_hash": content_hash}):
                 logger.error(f"Failed to create log file record (Task ID: {task_id})")
                 processing_results[task_id]["issues"].append("Failed to create log file record")
 
@@ -126,21 +160,23 @@ def process_log_file(file_path: str, task_id: str, file_name: str,
     return processing_results[task_id]
 
 
-async def save_uploaded_file(upload: UploadFile) -> str:
+async def save_uploaded_file(upload: UploadFile) -> Tuple[str, str]:
     """
     Stream an uploaded file to a temporary file on disk without loading it
-    into memory. Returns the temporary file path.
+    into memory. Returns (temporary file path, SHA-256 of the content).
     """
     suffix = os.path.splitext(upload.filename or "")[1]
-    if suffix.lower() not in {".log", ".txt", ".gz", ""}:
+    if suffix.lower() not in {".log", ".txt", ".gz", ".json", ""}:
         suffix = ".log"
+    digest = hashlib.sha256()
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as temp_file:
         while True:
             chunk = await upload.read(UPLOAD_COPY_CHUNK_BYTES)
             if not chunk:
                 break
+            digest.update(chunk)
             temp_file.write(chunk)
-        return temp_file.name
+        return temp_file.name, digest.hexdigest()
 
 
 def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:

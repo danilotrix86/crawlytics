@@ -30,10 +30,11 @@ def _to_int(value: Any) -> Optional[int]:
 def _entry(time: datetime, ip: Optional[str], method: Optional[str], path: Optional[str],
            status: Any, user_agent: Optional[str], referer: Optional[str] = None,
            request_id: Any = None, size: Any = None) -> Dict[str, Any]:
+    # Store everything in UTC so days and orderings line up across time zones
     if time.tzinfo is None:
         time = time.replace(tzinfo=timezone.utc)
     return {
-        "time": time.replace(microsecond=0),
+        "time": time.astimezone(timezone.utc).replace(microsecond=0),
         "ip_address": ip,
         "method": method,
         "path": path,

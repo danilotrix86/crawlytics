@@ -41,13 +41,9 @@ export function useLogFileDeletion({ selectedLogId, selectLogFile }: UseLogFileD
                         }
                     }
                 }
-                // Invalidate the queries *after* potential state updates within the transition
+                // Refresh the file list and any data that included the deleted file
                 queryClient.invalidateQueries({ queryKey: ['logFiles'] });
-                // Also invalidate the active log file query
-                queryClient.invalidateQueries({ queryKey: ['activeLogFile'] });
-                
-                // Refresh the page to reflect the changes
-                window.location.reload();
+                queryClient.invalidateQueries({ queryKey: ['sql'] });
             });
         },
         onError: (error, deletedLogId) => {

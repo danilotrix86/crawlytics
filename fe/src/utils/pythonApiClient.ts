@@ -90,6 +90,19 @@ export async function pythonApiUpload<T>(endpoint: string, formData: FormData): 
     throw new PythonApiError('Unknown upload error');
   }
 } 
+/** The most useful message from an API error: the backend's `detail` when there is one */
+export function errorMessage(error: unknown, fallback = 'Something went wrong'): string {
+  if (error instanceof PythonApiError && typeof error.details === 'string') {
+    try {
+      const parsed = JSON.parse(error.details);
+      if (typeof parsed?.detail === 'string') return parsed.detail;
+    } catch {
+      // not JSON; fall through
+    }
+  }
+  return error instanceof Error && error.message ? error.message : fallback;
+}
+
 /** Absolute URL for an API path, e.g. for download links */
 export function apiUrl(endpoint: string): string {
   return `${PYTHON_API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;

@@ -228,3 +228,40 @@ def test_demo_import_and_csv_export():
 
     client.delete(f"/api/logs/{task_id}")
     assert sql("SELECT COUNT(*) AS n FROM ai_referrals WHERE log_file_id = ?", [task_id]).json()[0]["n"] == 0
+
+
+def test_times_are_stored_in_utc_and_old_rows_migrate(tmp_path):
+    import sqlite3
+    from database.init_db import migrate
+    from parser import make_parser
+
+    line = '1.2.3.4 - - [11/Oct/2024:01:30:00 +0200] "GET / HTTP/1.1" 200 5 "-" "GPTBot/1.0"'
+    entry = make_parser("apache").parse_line(line)
+    assert entry["time"].isoformat() == "2024-10-10T23:30:00+00:00"  # previous day in UTC
+
+    conn = sqlite3.connect(tmp_path / "old.db")
+    conn.execute("CREATE TABLE access_logs (id INTEGER PRIMARY KEY, time TEXT)")
+    conn.execute("CREATE TABLE ai_referrals (id INTEGER PRIMARY KEY, time TEXT)")
+    conn.execute("INSERT INTO access_logs (time) VALUES ('2024-10-11T01:30:00+02:00'), ('2024-10-11T05:00:00+00:00')")
+    migrate(conn)
+    assert [r[0] for r in conn.execute("SELECT time FROM access_logs ORDER BY id")] == [
+        "2024-10-10T23:30:00+00:00", "2024-10-11T05:00:00+00:00"]
+    assert conn.execute("PRAGMA user_version").fetchone()[0] >= 1
+
+
+def test_duplicate_upload_is_rejected():
+    body = ("\n".join(SAMPLE_LINES) + "\n# dup-test\n").encode()
+    first = client.post("/api/import-log", files={"log_file": ("dup.log", body, "text/plain")})
+    assert first.status_code == 202
+    task_id = first.json()["log_file_id"]
+    assert client.get(f"/api/task/{task_id}").json()["status"] == "complete"
+
+    again = client.post("/api/import-log", files={"log_file": ("dup-renamed.log", body, "text/plain")})
+    assert again.status_code == 409
+    assert "already imported as dup.log" in again.json()["detail"]
+
+    forced = client.post("/api/import-log", files={"log_file": ("dup.log", body, "text/plain")},
+                         data={"allow_duplicate": "true"})
+    assert forced.status_code == 202
+    for tid in (task_id, forced.json()["log_file_id"]):
+        client.delete(f"/api/logs/{tid}")

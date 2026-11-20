@@ -37,7 +37,9 @@ def ingest_file(path: Path, activate: bool = True) -> dict:
     result = process_log_file(str(path), task_id, path.name, save_to_db=True,
                               create_indexes=True, delete_after=False)
     stats = result.get("stats") or {}
-    if result.get("status") == "error":
+    if result.get("status") == "duplicate":
+        print(f"  {path.name}: skipped - {result.get('error')}")
+    elif result.get("status") == "error":
         print(f"  {path.name}: failed - {result.get('error')}")
     else:
         print(

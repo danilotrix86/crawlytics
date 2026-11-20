@@ -53,10 +53,10 @@ class LogWriter:
                 stats = stats or {}
                 cursor.execute(
                     "INSERT OR IGNORE INTO log_files "
-                    "(log_file_id, file_name, in_use, log_format, total_lines, parsed_lines) "
-                    "VALUES (?, ?, ?, ?, ?, ?)",
-                    (log_file_id, file_name, 1 if set_as_active else 0,
-                     stats.get("log_format"), stats.get("total_lines"), stats.get("parsed_lines"))
+                    "(log_file_id, file_name, in_use, log_format, total_lines, parsed_lines, content_hash) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (log_file_id, file_name, 1 if set_as_active else 0, stats.get("log_format"),
+                     stats.get("total_lines"), stats.get("parsed_lines"), stats.get("content_hash"))
                 )
                 return True
         except Exception as e:

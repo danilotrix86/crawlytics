@@ -3,7 +3,6 @@ import { Outlet } from 'react-router-dom';
 import { Header } from '../components/layout/Header';
 import { AppSidebar } from '../components/layout/Sidebar';
 import { Footer } from '../components/layout/Footer';
-import { usePrefetching } from '../hooks/usePrefetching';
 
 interface FullWidthSidebarProps {
 	className?: string;
@@ -11,10 +10,7 @@ interface FullWidthSidebarProps {
 
 const FullWidthSidebar: React.FC<FullWidthSidebarProps> = ({ className = '' }) => {
 	const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-	
-	// Initialize prefetching for likely navigation paths
-	usePrefetching();
-	
+
 	const handleToggleSidebar = (): void => {
 		setIsSidebarOpen(prevState => !prevState);
 	};

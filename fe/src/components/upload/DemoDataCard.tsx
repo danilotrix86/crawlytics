@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { setActiveLogFileId } from '../../utils/cookies';
 import { Card } from 'flowbite-react';
-import { pythonApiFetch } from '../../utils/pythonApiClient';
+import { pythonApiFetch, errorMessage } from '../../utils/pythonApiClient';
 
 interface Task {
   status: string;
@@ -21,18 +22,22 @@ export const DemoDataCard: React.FC = () => {
     queryFn: () => pythonApiFetch<Task>(`/task/${taskId}`),
     enabled: !!taskId,
     retry: true,
-    refetchInterval: (q) => (q.state.data?.status === 'complete' || q.state.data?.status === 'error' ? false : 1000),
+    refetchInterval: (q) => (q.state.data && q.state.data.status !== 'processing' ? false : 1000),
   });
 
   useEffect(() => {
     if (!taskId || !task.data) return;
     if (task.data.status === 'complete') {
-      document.cookie = `selected_log_file=${taskId}; max-age=${7 * 24 * 60 * 60}; path=/`;
+      setActiveLogFileId(taskId);
       // Wait for the log file list to refresh first; otherwise the "no log files" guard
       // still sees the old, empty list and sends the user back to this page.
       queryClient.invalidateQueries().then(() => navigate('/dashboard'));
-    } else if (task.data.status === 'error') {
-      setError(task.data.error || 'Demo import failed');
+    } else if (task.data.status !== 'processing') {
+      setError(
+        task.data.status === 'duplicate'
+          ? 'The demo data from this hour is already loaded. Select demo-site-access.log in the sidebar.'
+          : task.data.error || 'Demo import failed'
+      );
       setTaskId(null);
     }
   }, [task.data, taskId, navigate, queryClient]);
@@ -43,7 +48,7 @@ export const DemoDataCard: React.FC = () => {
       const result = await pythonApiFetch<{ log_file_id: string }>('/demo', { method: 'POST' });
       setTaskId(result.log_file_id);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not start the demo import');
+      setError(errorMessage(e, 'Could not start the demo import'));
     }
   };
 

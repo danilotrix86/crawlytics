@@ -143,10 +143,24 @@ def test_cli_ingest_and_watch(tmp_path, capsys):
     assert "3 crawler requests" in capsys.readouterr().out
     assert log.exists()  # the CLI never deletes the user's file
 
+    # Same content again: skipped as a duplicate
+    assert cli.main(["ingest", str(log)]) == 0
+    assert "skipped - Already imported" in capsys.readouterr().out
+
+    other = log.parent / "access.log.1"
+    other.write_text(SAMPLE_LINES[0] + "\n")
     assert cli.main(["watch", str(log.parent), "--once", "--settle", "0"]) == 0
     first = capsys.readouterr().out
-    assert "access.log" in first
+    assert "access.log.1: Apache/Nginx combined" in first
     assert cli.main(["watch", str(log.parent), "--once", "--settle", "0"]) == 0
-    assert "access.log:" not in capsys.readouterr().out  # already imported
+    assert "access.log" not in capsys.readouterr().out  # nothing changed, nothing re-read
 
     assert cli.main(["ingest", str(tmp_path / "missing.log")]) == 1
+
+    # Clean up so other tests can import the same sample content
+    from database import DBConnection, delete_log_file_data
+    import asyncio
+    with DBConnection() as conn:
+        ids = [r[0] for r in conn.execute("SELECT log_file_id FROM log_files WHERE log_file_id LIKE 'cli_%'")]
+    for log_file_id in ids:
+        asyncio.run(delete_log_file_data(log_file_id))

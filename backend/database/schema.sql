@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS log_files (
     in_use BOOLEAN DEFAULT 0,
     log_format TEXT,       -- detected format, e.g. 'apache', 'caddy', 'w3c'
     total_lines INTEGER,   -- lines in the file
-    parsed_lines INTEGER   -- requests parsed (humans + bots), for share-of-traffic
+    parsed_lines INTEGER,  -- requests parsed (humans + bots), for share-of-traffic
+    content_hash TEXT      -- SHA-256 of the file, to spot repeat imports
 );
 
 CREATE TABLE IF NOT EXISTS access_logs (
